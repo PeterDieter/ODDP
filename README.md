@@ -40,7 +40,7 @@ You can then execute the code with:
 where **instanceName** gives the path to the .txt file containing the instance information. The second parameter is the **simulation length** in hours (int). The third parameter is the **rejection costs** in seconds (int). The fourth parameter is the **interarrival rate** in seconds (int). The **methodName** is a string that determines the method which will be applied/trained for the assignment problem. For example:
 
 ```
-./onlineAssignment instances/instance_train.txt 6 3600 25 tuneK
+./onlineAssignment instances/instance_train.txt 16 3600 20 tuneK
 ```
 
 Currently, the following assigning strategies are available:

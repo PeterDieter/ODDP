@@ -75,6 +75,8 @@ private:
 	double getOpportunityCostsLB(Warehouse* w, Order* o);
 	std::vector<int> getDonePickingTimes(Warehouse* w, int endTime);
 
+	void chooseWarehouseForOrderHardConstraint(Order* newOrder);
+
 	// Function that assigns a courier to the closest warehouse
 	void chooseClosestWarehouseForCourier(Courier* courier);
 
