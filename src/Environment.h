@@ -16,7 +16,7 @@
 #include "Data.h"
 #include "Environment.h"
 
-struct policyNetwork;
+struct neuralNetwork;
 
 class Environment
 {
@@ -53,17 +53,17 @@ private:
 	torch::Tensor assingmentProblemStates;
 	torch::Tensor assingmentProblemActions;
 
-	// In this method we apply the nearest warehouse policy.
-	void tuneK(int timelimit);
-
 	// In this method, we reassign orders to other warehouses
-	void reassignmentPolicyLB(int timelimit);
+	void basePolicy(int policy);
 
 	// In this method we initialize the rest of the Data, such as warehouses, couriers, etc.
-	void initialize(int timeLimit, std::vector<int> vectorOfKs);
+	void initialize();
 
 	// Function to initialize the values of an order
 	void initOrder(int currentTime, Order* o);
+
+	// Function that checks if order can be assigned to warehouse without hurting the time window
+	bool isFeasible(Order* newOrder, Warehouse* warehouse);
 
 	// Functions that assigns order to a warehouse, picker and courier, respectively
 	void chooseClosestWarehouseForOrder(Order* newOrder);
@@ -71,11 +71,10 @@ private:
 	void chooseCourierForOrder(Order* newOrder);
 
 	// Choose warehouse for an order, based on the Lower bound policy
-	void chooseWarehouseForOrderLB(Order* newOrder);
+	void chooseWarehouseForOrderReassignment(Order* newOrder);
 	double getOpportunityCostsLB(Warehouse* w, Order* o);
-	std::vector<int> getDonePickingTimes(Warehouse* w, int endTime);
-
-	void chooseWarehouseForOrderHardConstraint(Order* newOrder);
+	std::vector<int> getDonePickingTimes(Warehouse* w);
+	std::vector<int> getDoneCourierTimes(Warehouse* w);
 
 	// Function that assigns a courier to the closest warehouse
 	void chooseClosestWarehouseForCourier(Courier* courier);
@@ -120,7 +119,35 @@ private:
 
 
 	// Function that returns the state as a tensor
-	torch::Tensor getStateAssignmentProblem(Order* order);
+	torch::Tensor getState(Order* order);
+	void chooseWarehouseForOrderNN(Order* newOrder, neuralNetwork& n);
+	void trainPolicy();
+	void simulateFromKOn(int k, neuralNetwork& n);
+	void initalizeForCostEstimation();
+};
+
+
+struct neuralNetwork : torch::nn::Module {
+	neuralNetwork(int64_t inputSize, int64_t outputSize) {
+		fc1 = register_module("fc1", torch::nn::Linear(inputSize, 1024));
+		fc2 = register_module("fc2", torch::nn::Linear(1024, 512));
+		fc3 = register_module("fc3", torch::nn::Linear(512, 256));
+		fc4 = register_module("fc4", torch::nn::Linear(256, outputSize));
+	}
+
+	// Implement the Net's algorithm.
+	torch::Tensor forward(torch::Tensor x) {	
+		// Use one of many tensor manipulation functions.
+		x = torch::layer_norm(x, (x.size(1)));
+		x = torch::leaky_relu(fc1->forward(x));
+		x = torch::leaky_relu(fc2->forward(x));
+		x = torch::leaky_relu(fc3->forward(x));
+		x = fc4->forward(x);
+		return x;
+	}
+
+	// Use one of many "standard library" modules.
+	torch::nn::Linear fc1{nullptr}, fc2{nullptr}, fc3{nullptr}, fc4{nullptr};
 };
 
 

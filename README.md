@@ -34,15 +34,15 @@ make
 You can then execute the code with:
 
 ```
-./onlineAssignment instanceName simulationLength rejectionCosts interArrivalRate methodName
+./onlineAssignment instanceName simulationLength maxWaiting interArrivalRate methodName
 ```
 
-where **instanceName** gives the path to the .txt file containing the instance information. The second parameter is the **simulation length** in hours (int). The third parameter is the **rejection costs** in seconds (int). The fourth parameter is the **interarrival rate** in seconds (int). The **methodName** is a string that determines the method which will be applied/trained for the assignment problem. For example:
+where **instanceName** gives the path to the .txt file containing the instance information. The second parameter is the **simulation length** in hours (int). The third parameter is the **max waiting time** in seconds (int). The fourth parameter is the **interarrival rate** in seconds (int). The **methodName** is a string that determines the method which will be applied/trained for the assignment problem. For example:
 
 ```
-./onlineAssignment instances/instance_train.txt 16 3600 20 tuneK
+./onlineAssignment instances/instance_train.txt 16 3600 20 nearestWarehouse
 ```
 
 Currently, the following assigning strategies are available:
-1. tuneK: In this policy, we tune K for each warehouse. If there are k orders in the picking system, we reject new incoming orders.
-2. reassignmentPolicyLB: For given Ks, we now also reassign orders to other warehouses, using a lower bound on costs.
+1. nearestWarehouse: In this policy, we assign each order to the nearest warehouse. If order cannot be served on time, we reject.
+2. reassignmentPolicy: We check if order can be assigned to any warehouse. We choose the warehouse with lowest waiting for the order.

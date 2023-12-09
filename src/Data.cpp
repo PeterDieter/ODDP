@@ -20,7 +20,8 @@ Data::Data(char * argv[])
 	nbWarehouses = 0;
 	nbCouriers = 0;
 	nbPickers = 0;
-	penaltyForNotServing = std::stoi(argv[3]);
+	simulationTime = std::stoi(argv[2]);
+	maxWaiting = std::stoi(argv[3]);
 	interArrivalTime = std::stoi(argv[4]);
 	meanCommissionTime = 180;
 	meanServiceTimeAtClient = 60;

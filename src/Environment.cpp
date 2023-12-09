@@ -21,8 +21,56 @@ Environment::Environment(Data* data) : data(data)
     std::cout<<"----- Create Environment -----"<<std::endl;
 }
 
+void Environment::initalizeForCostEstimation()
+{
+    int courierCounter = 0;
+    int pickerCounter = 0;
+    totalWaitingTime = 0;
+    highestWaitingTimeOfAnOrder = 0;
+    latestArrivalTime = 0;
+    nbOrdersServed = 0;
+    rejectCount = 0;
+    nextOrderBeingServed = nullptr;
+    warehouses = std::vector<Warehouse*>(0);
 
-void Environment::initialize(int timeLimit, std::vector<int> vectorOfKs)
+    for (int wID = 0; wID < data->nbWarehouses; wID++)
+    {
+        Warehouse* newWarehouse = new Warehouse;
+        warehouses.push_back(newWarehouse);
+        newWarehouse->wareID = data->paramWarehouses[wID].wareID;
+        newWarehouse->lat = data->paramWarehouses[wID].lat;
+        newWarehouse->lon = data->paramWarehouses[wID].lon;
+        newWarehouse->initialNbCouriers = data->paramWarehouses[wID].initialNbCouriers;
+        newWarehouse->initialNbPickers = data->paramWarehouses[wID].initialNbPickers;
+        newWarehouse->ordersNotAssignedToCourier = std::vector<Order*>(0);
+        newWarehouse->ordersAssigned = std::vector<Order*>(0);
+        newWarehouse->costsIncurred = 0;
+
+        for (int cID = 0; cID < newWarehouse->initialNbCouriers; cID++)
+        {
+            Courier* newCourier = new Courier;
+            newCourier->courierID = courierCounter;
+            newCourier->assignedToWarehouse = warehouses[wID];
+            newCourier->assignedToOrder = nullptr;
+            newCourier->timeWhenAvailable = 0;
+            couriers.push_back(newCourier);
+            newWarehouse->couriersAssigned.push_back(newCourier);
+            courierCounter ++;    
+        }
+        for (int pID = 0; pID < newWarehouse->initialNbPickers; pID++)
+        {
+            Picker* newPicker = new Picker;
+            newPicker->pickerID = pickerCounter;
+            newPicker->assignedToWarehouse = warehouses[wID];
+            newPicker->timeWhenAvailable = 0;
+            pickers.push_back(newPicker);
+            newWarehouse->pickersAssigned.push_back(newPicker);
+            pickerCounter ++;    
+        }
+    }
+}
+
+void Environment::initialize()
 {
     
     // CONSTRUCTOR: First we initialize the environment by assigning 
@@ -73,7 +121,6 @@ void Environment::initialize(int timeLimit, std::vector<int> vectorOfKs)
         newWarehouse->initialNbPickers = data->paramWarehouses[wID].initialNbPickers;
         newWarehouse->ordersNotAssignedToCourier = std::vector<Order*>(0);
         newWarehouse->ordersAssigned = std::vector<Order*>(0);
-        newWarehouse->K = vectorOfKs[wID];
         newWarehouse->costsIncurred = 0;
 
         for (int cID = 0; cID < newWarehouse->initialNbCouriers; cID++)
@@ -106,7 +153,7 @@ void Environment::initialize(int timeLimit, std::vector<int> vectorOfKs)
     timesToServe = std::vector<int>(0);
     int currTime = 0;
     int nextTime;
-    while (currTime < timeLimit){
+    while (currTime < data->simulationTime*3600){
         nextTime = drawFromExponentialDistribution(data->interArrivalTime);
         currTime += nextTime;
         orderTimes.push_back(nextTime);
@@ -115,6 +162,7 @@ void Environment::initialize(int timeLimit, std::vector<int> vectorOfKs)
         timesToServe.push_back(drawFromExponentialDistribution(data->meanServiceTimeAtClient));
     }
 }
+ 
 
 void Environment::initOrder(int currentTime, Order* o)
 {
@@ -148,7 +196,7 @@ void Environment::choosePickerForOrder(Order* newOrder)
     newOrder->assignedPicker = getFastestAvailablePicker(newOrder->assignedWarehouse);
     // We set the time the picker is available again to the maximum of either the previous availability time or the current time, plus the time needed to comission the order
     newOrder->assignedPicker->timeWhenAvailable = std::max(newOrder->assignedPicker->timeWhenAvailable, currentTime) + newOrder->timeToComission;
-    newOrder->donePickingTime = newOrder->assignedPicker->timeWhenAvailable + newOrder->timeToComission;
+    newOrder->donePickingTime = newOrder->assignedPicker->timeWhenAvailable;
 }
 
 void Environment::chooseCourierForOrder(Order* newOrder)
@@ -172,7 +220,7 @@ void Environment::chooseCourierForOrder(Order* newOrder)
 
     // Remove order from vector of orders that have not been assigned to a courier yet (If applicable)   
     RemoveOrderFromVector(newOrder->assignedWarehouse->ordersNotAssignedToCourier, newOrder);
-    newOrder->assignedCourier->timeWhenAvailable = newOrder->arrivalTime + newOrder->serviceTimeAtClient + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
+    newOrder->assignedCourier->timeWhenAvailable = newOrder->arrivalTime + newOrder->serviceTimeAtClient + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID)*2;
     //std::cout<<"Hello: "<<newOrder->orderID<<" "<<newOrder->assignedCourier->courierID<<" "<<newOrder->assignedCourier->timeWhenAvailable<<" "<<newOrder->arrivalTime<<" "<<newOrder->serviceTimeAtClient<<" "<<data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID)<<std::endl;
 }
 
@@ -250,13 +298,13 @@ int Environment::getObjValue(){
     for (Order* order: orders){
         if (order->accepted){
             if (order->arrivalTime == -1){
-                objectiveValue += data->penaltyForNotServing;
+                objectiveValue += data->maxWaiting;
             }else{
                 objectiveValue += (order->arrivalTime-order->orderTime); 
                 //std::cout<<order->arrivalTime<<" "<<order->orderTime<<" "<<order->arrivalTime-order->orderTime<<std::endl;
             }
         }else{
-            objectiveValue += data->penaltyForNotServing;
+            objectiveValue += data->maxWaiting;
         }
     } 
     return objectiveValue;
@@ -265,10 +313,10 @@ int Environment::getObjValue(){
 void Environment::writeCostsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training){
     std::string fileName;
     if (is_training){
-        fileName = "data/experimentData/trainingData/averageCosts_" + std::to_string(data->penaltyForNotServing) + "_" + std::to_string(data->interArrivalTime) + "_" + std::to_string(lambdaTemporal) + "_" + std::to_string(lambdaSpatial) +".txt";
+        fileName = "data/experimentData/trainingData/averageCosts_" + std::to_string(data->maxWaiting) + "_" + std::to_string(data->interArrivalTime) + "_" + std::to_string(lambdaTemporal) + "_" + std::to_string(lambdaSpatial) +".txt";
     }
     else{
-        fileName = "data/experimentData/testData/averageCosts_" + std::to_string(data->penaltyForNotServing) + "_" + std::to_string(data->interArrivalTime) + "_"  + std::to_string(lambdaTemporal) + "_" + std::to_string(lambdaSpatial) +".txt";
+        fileName = "data/experimentData/testData/averageCosts_" + std::to_string(data->maxWaiting) + "_" + std::to_string(data->interArrivalTime) + "_"  + std::to_string(lambdaTemporal) + "_" + std::to_string(lambdaSpatial) +".txt";
     }
  
 	std::cout << "----- WRITING COST VECTOR IN : " << fileName << std::endl;
@@ -291,7 +339,7 @@ void Environment::writeCostsToFile(std::vector<float> costs, std::vector<float> 
 
 void Environment::writeStatsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, std::vector<float> averageWaitingTime, std::vector<float> maxWaitingTime){
     std::string fileName;
-    fileName = "data/experimentData/trainingData/statsData_" + std::to_string(data->penaltyForNotServing) + "_" + std::to_string(data->interArrivalTime) +".txt";
+    fileName = "data/experimentData/trainingData/statsData_" + std::to_string(data->maxWaiting) + "_" + std::to_string(data->interArrivalTime) +".txt";
    
  
 	std::cout << "----- WRITING COST VECTOR IN : " << fileName << std::endl;
@@ -422,7 +470,7 @@ int Environment::getNumberOfOrdersNotPickedYet(Warehouse* w)
     return counter;
 }
 
-torch::Tensor Environment::getStateAssignmentProblem(Order* order){
+torch::Tensor Environment::getState(Order* order){
     // For now, the state is only the distances to the warehouses
     std::vector<int> distancesToWarehouses = data->travelTime.getRow(order->client->clientID);
     std::vector<float> state;
@@ -452,173 +500,70 @@ double Environment::euclideanDistance(double latFrom, double latTo, double lonFr
     return std::sqrt(dx * dx + dy * dy)*100;
 }
 
+std::vector<int> Environment::getDonePickingTimes(Warehouse* w)
+{
+    std::vector<int> readyTimes;
+    for(Picker* p : w->pickersAssigned)
+    {
+        readyTimes.push_back(p->timeWhenAvailable);
+    }
+    return readyTimes; 
+}
+
+std::vector<int> Environment::getDoneCourierTimes(Warehouse* w)
+{
+    std::vector<int> readyTimes;
+    for(Courier* c : w->couriersAssigned)
+    {
+        readyTimes.push_back(c->timeWhenAvailable);
+    }
+    return readyTimes; 
+}
+
+bool Environment::isFeasible(Order* newOrder, Warehouse* warehouse){
+    std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
+    int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
+    int fastestPickerTimeAvailable = getFastestAvailablePicker(warehouses[indexClosestWarehouse])->timeWhenAvailable;
+    int waitingForCourierTime = getFastestAvailableCourier(warehouses[indexClosestWarehouse])->timeWhenAvailable-(currentTime + newOrder->timeToComission + std::max(0,fastestPickerTimeAvailable-currentTime));
+    int waitingForPickerTime = fastestPickerTimeAvailable-currentTime;
+
+    if (distancesToWarehouses[indexClosestWarehouse] + newOrder->timeToComission + std::max(0,waitingForPickerTime) + std::max(0,waitingForCourierTime) <= data->maxWaiting){
+        return true;
+        newOrder->assignedWarehouse = warehouses[indexClosestWarehouse];
+        newOrder->accepted = true;
+    }
+    return false;
+}
+
 void Environment::chooseClosestWarehouseForOrder(Order* newOrder)
 {
     // For now we just assign the order to the closest warehouse
-    int indexClosestWarehouse;
     std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
-    indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
-    int numberOfOrdersNotPickedYet = getNumberOfOrdersNotPickedYet(warehouses[indexClosestWarehouse]);
+    int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
 
-    if (numberOfOrdersNotPickedYet < warehouses[indexClosestWarehouse]->K){
+    if (isFeasible(newOrder, warehouses[indexClosestWarehouse])){
         newOrder->assignedWarehouse = warehouses[indexClosestWarehouse];
         newOrder->accepted = true;
     }else{
-        warehouses[indexClosestWarehouse]->costsIncurred += data->penaltyForNotServing;
         newOrder->accepted = false;
         rejectCount++;
     }
 }
 
-std::vector<int> Environment::getDonePickingTimes(Warehouse* w, int endTime)
-{
-    std::vector<int> readyTimes;
-    for(Order* o : w->ordersAssigned)
-    {
-        if(o->donePickingTime > currentTime && o->donePickingTime < endTime)
-        {
-            readyTimes.push_back(o->donePickingTime);
-        }
-    }
-    return readyTimes; 
-}
-
-void Environment::tuneK(int timeLimit)
-{
-    std::cout<<"----- Tuning starts -----"<<std::endl;
-    int kLimit = 15;
-    std::vector<std::vector<double>> costVectorOfWarehouses(kLimit+1, std::vector<double>(data->nbWarehouses, 0));
-    for (int k=0; k <= kLimit; k++)
-    {
-        std::cout<<"-----Current k: " << k << " -----"<<std::endl;
-        double running_costs = 0.0;
-        double runningCounter = 0.0;
-        double runnining_rejections = 0.0;
-        std::vector< float> averageCostVector;
-        std::vector< float> averageRejectionRateVector;
-        std::vector< float> meanWaitingTimeVector;
-        std::vector< float> maxWaitingTimeVector;
-        std::vector< int> vectorOfKs(data->nbWarehouses, k);
-
-        for (int epoch = 1; epoch <= 500; epoch++) {
-            // Initialize data structures
-            initialize(timeLimit, vectorOfKs);
-            
-            // Start with simulation
-            int counter = 0;
-            currentTime = 0;
-            timeCustomerArrives = 0;
-            timeNextCourierArrivesAtOrder = INT_MAX;
-            while (currentTime < timeLimit || ordersAssignedToCourierButNotServed.size() > 0){
-                // Keep track of current time
-                if (counter == orderTimes.size()-1){
-                    currentTime = timeNextCourierArrivesAtOrder;
-                }else{
-                    currentTime = std::min(timeCustomerArrives, timeNextCourierArrivesAtOrder);
-                }
-
-                if (timeCustomerArrives < timeNextCourierArrivesAtOrder && currentTime <= timeLimit && counter<orderTimes.size()-1){
-                    timeCustomerArrives += orderTimes[counter];
-                    currentTime = timeCustomerArrives;
-                    counter += 1;
-                    // Draw new order and assign it to warehouse, picker and courier. MUST BE IN THAT ORDER!!!
-                    Order* newOrder = new Order;
-                    initOrder(timeCustomerArrives, newOrder);
-                    orders.push_back(newOrder);
-                    // We immediately assign the order to a warehouse and a picker
-                    chooseClosestWarehouseForOrder(newOrder);
-                    if (newOrder->accepted){
-                        newOrder->assignedWarehouse->ordersAssigned.push_back(newOrder);
-                        choosePickerForOrder(newOrder);
-                        // If there are couriers assigned to the warehouse, we can assign a courier to the order
-                        if (newOrder->assignedWarehouse->couriersAssigned.size()>0){
-                            chooseCourierForOrder(newOrder);
-                            AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
-                        }else{ // else we add the order to list of orders that have not been assigned to a courier yet
-                            newOrder->assignedWarehouse->ordersNotAssignedToCourier.push_back(newOrder);    
-                        }
-                    }
-                }else { // when a courier arrives at an order
-                    if (nextOrderBeingServed){
-                        Courier* c = nextOrderBeingServed->assignedCourier;
-                        // We choose a warehouse for the courier
-                        chooseClosestWarehouseForCourier(c);
-                        // If the chosen warehouse has order that have not been assigned to a courier yet, we can now assign the order to a courier
-                        if (c->assignedToWarehouse->ordersNotAssignedToCourier.size()>0){
-                            Order* orderToAssignToCourier = c->assignedToWarehouse->ordersNotAssignedToCourier[0];
-                            chooseCourierForOrder(orderToAssignToCourier);
-                            AddOrderToVector(ordersAssignedToCourierButNotServed, orderToAssignToCourier);
-                        }
-                    }
-                }
-            }
-            double occuredCosts = getObjValue();
-            running_costs += occuredCosts;
-            runningCounter += 1;
-            runnining_rejections += (float)rejectCount/ orders.size();
-            averageCostVector.push_back(occuredCosts);
-            averageRejectionRateVector.push_back((float)rejectCount/(float)orderTimes.size());
-            if (nbOrdersServed > 0){
-                //std::cout<<"----- Iteration: " << epoch << " Number of orders that arrived: " << orders.size() << " and served: " << nbOrdersServed << " Obj. value: " << getObjValue() << ". Mean wt: " << totalWaitingTime/nbOrdersServed <<" seconds. Highest wt: " << highestWaitingTimeOfAnOrder <<" seconds. -----" <<std::endl;
-                meanWaitingTimeVector.push_back(totalWaitingTime/nbOrdersServed);
-                maxWaitingTimeVector.push_back(highestWaitingTimeOfAnOrder);
-            }else{
-                meanWaitingTimeVector.push_back(0);
-                maxWaitingTimeVector.push_back(0);
-            }
-
-            for(int w = 0; w < warehouses.size(); w++){
-                costVectorOfWarehouses[k][w] = costVectorOfWarehouses[k][w] + (warehouses[w]->costsIncurred-costVectorOfWarehouses[k][w])/runningCounter;
-            }
-            //std::cout<<"----- Simulation finished -----"<<std::endl;
-            //std::cout<<"----- Number of orders that arrived: " << orders.size() << " and served: " << nbOrdersServed << " Obj. value: " << getObjValue() << ". Mean wt: " << totalWaitingTime/nbOrdersServed <<" seconds. Highest wt: " << highestWaitingTimeOfAnOrder <<" seconds. -----" <<std::endl;
-            //writeRoutesAndOrdersToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
-        }
-        //writeStatsToFile(averageCostVector, averageRejectionRateVector, meanWaitingTimeVector, maxWaitingTimeVector);
-        std::cout<< "Iterations: " << runningCounter <<" Average costs: " << running_costs / runningCounter << " Average rejection rate: " <<  runnining_rejections / runningCounter <<std::endl;
-        for(int w = 0; w < warehouses.size(); w++){
-            std::cout<<costVectorOfWarehouses[k][w]<<std::endl;
-        }
-    }
-    writeMatrixToFile(costVectorOfWarehouses, "tuneKResults.txt");
-}
-
-
-
 double Environment::getOpportunityCostsLB(Warehouse* w, Order* o)
 {
     double oppCosts = 0;
     double lambda = 1/(data->interArrivalTime*data->nbWarehouses);
-    double donePickingTime = std::max(currentTime,getFastestAvailablePicker(w)->timeWhenAvailable) + o->timeToComission;
-    std::vector<int> donePickingTimes = getDonePickingTimes(w, donePickingTime);
+    std::vector<int> donePickingTimes = getDonePickingTimes(w);
+    std::vector<int> doneCourierTimes = getDoneCourierTimes(w);
     sort(donePickingTimes.begin(), donePickingTimes.end()); 
-    int startTime = currentTime;
-    int timeDiff;
-    int i = 1;
-    for(int time : donePickingTimes)
-    {
-        timeDiff = (time - startTime);
-        oppCosts += timeDiff * lambda;
-        //std::cout<<" "<<w->K<<" "<<donePickingTimes.size()<<" "<<i<<std::endl;
-        if (donePickingTimes.size()+i <= w->K){
-            for (int j=0; j<w->K-donePickingTimes.size()-i; j++){
-                oppCosts -= (pow(timeDiff*lambda,j)*pow(EulerConstant,-lambda*timeDiff))/factorial(j) * j;
-            }
-        }
-        i += 1;
-        startTime = time;
-    }
-    timeDiff = (donePickingTime - startTime);
-    oppCosts += timeDiff * lambda;
-
-    for (int j=0; j<w->K-donePickingTimes.size(); j++){
-        oppCosts -= (pow(timeDiff*lambda,j)*pow(EulerConstant,-lambda*timeDiff))/factorial(j) * j;
-    }
+    sort(doneCourierTimes.begin(), doneCourierTimes.end()); 
+    
     return oppCosts;
 }
 
 
-void Environment::chooseWarehouseForOrderHardConstraint(Order* newOrder)
+void Environment::chooseWarehouseForOrderReassignment(Order* newOrder)
 {
     // For now we just assign the order to the closest warehouse
     std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
@@ -632,9 +577,10 @@ void Environment::chooseWarehouseForOrderHardConstraint(Order* newOrder)
         if (numberOfOrdersNotPickedYet < warehouses[warehouseCounter]->K){
             double oppCosts = getOpportunityCostsLB(w, newOrder);
             expectedRejections[warehouseCounter] = oppCosts;
-            int waitingForCourierTime = getFastestAvailableCourier(w)->timeWhenAvailable-(currentTime+ newOrder->timeToComission + std::max(0,getFastestAvailablePicker(w)->timeWhenAvailable-currentTime));
-            // std::cout<<oppCosts<<std::endl;
-            costs[warehouseCounter] = distancesToWarehouses[warehouseCounter] + newOrder->timeToComission + std::max(0,getFastestAvailablePicker(w)->timeWhenAvailable-currentTime) + std::max(0,waitingForCourierTime);
+            int fastestPickerTimeAvailable = getFastestAvailablePicker(w)->timeWhenAvailable;
+            int waitingForCourierTime = getFastestAvailableCourier(w)->timeWhenAvailable-(currentTime+ newOrder->timeToComission + std::max(0,fastestPickerTimeAvailable-currentTime));
+            int waitingForPickerTime = fastestPickerTimeAvailable-currentTime;
+            costs[warehouseCounter] = distancesToWarehouses[warehouseCounter] + newOrder->timeToComission + std::max(0,waitingForPickerTime) + std::max(0,waitingForCourierTime);
             indices[warehouseCounter] = warehouseCounter;
         }
         warehouseCounter += 1;
@@ -643,9 +589,9 @@ void Environment::chooseWarehouseForOrderHardConstraint(Order* newOrder)
 
     bool assigned = false;
     for (int w : indices){
-        if (costs[indexClosestWarehouse] <= data->penaltyForNotServing)
+        if (costs[w] <= data->maxWaiting)
         {
-            newOrder->assignedWarehouse = warehouses[indexClosestWarehouse];
+            newOrder->assignedWarehouse = warehouses[w];
             newOrder->accepted = true;
             assigned = true;
             break;
@@ -659,44 +605,37 @@ void Environment::chooseWarehouseForOrderHardConstraint(Order* newOrder)
 
 }
 
-
-void Environment::chooseWarehouseForOrderLB(Order* newOrder)
-{
-    // For now we just assign the order to the closest warehouse
-    int indexClosestWarehouse;
-    std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
-    indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
-    int numberOfOrdersNotPickedYet = getNumberOfOrdersNotPickedYet(warehouses[indexClosestWarehouse]);
-
-    if (numberOfOrdersNotPickedYet < warehouses[indexClosestWarehouse]->K){
-        newOrder->assignedWarehouse = warehouses[indexClosestWarehouse];
-        newOrder->accepted = true;
+void Environment::chooseWarehouseForOrderNN(Order* newOrder, neuralNetwork& n){
+    torch::Tensor state = getState(newOrder);
+    torch::Tensor prediction = n.forward(state);
+    // Prediction tensor to vector
+    std::vector<float> predVector(prediction.data_ptr<float>(), prediction.data_ptr<float>() + prediction.numel());
+    int indexWarehouse = std::min_element(predVector.begin(), predVector.end())-predVector.begin();
+    // If the index is nb.warehouses, we reject the order
+    if (indexWarehouse >= data->nbWarehouses){
+        newOrder->accepted = false;
+        rejectCount++;
     }else{
-        int warehouseCounter = 0;
-        std::vector< int> costs(data->nbWarehouses, INT16_MAX);
-        for(Warehouse* w: warehouses){
-            int numberOfOrdersNotPickedYet = getNumberOfOrdersNotPickedYet(warehouses[warehouseCounter]);
-            if (numberOfOrdersNotPickedYet < warehouses[warehouseCounter]->K){
-                double oppCosts = getOpportunityCostsLB(w, newOrder);
-                costs[warehouseCounter] = distancesToWarehouses[warehouseCounter] + newOrder->timeToComission + std::max(0,getFastestAvailablePicker(w)->timeWhenAvailable-currentTime);
-            }
-            warehouseCounter += 1;
-        }
-        int indexCheapestWarehouse = std::min_element(costs.begin(), costs.end())-costs.begin();
-        if (costs[indexCheapestWarehouse] < data->penaltyForNotServing*1)
-        {
-            newOrder->assignedWarehouse = warehouses[indexCheapestWarehouse];
+        if (isFeasible(newOrder, warehouses[indexWarehouse])){
+            newOrder->assignedWarehouse = warehouses[indexWarehouse];
             newOrder->accepted = true;
         }else{
-            warehouses[indexClosestWarehouse]->costsIncurred += data->penaltyForNotServing;
             newOrder->accepted = false;
             rejectCount++;
         }
 
     }
+
+    if (newOrder->orderID == 0){
+        assingmentProblemStates = state;
+        assingmentProblemActions = torch::tensor({indexWarehouse});
+    }else{
+        assingmentProblemStates = torch::cat({assingmentProblemStates, state});
+        assingmentProblemActions = torch::cat({assingmentProblemActions, torch::tensor({indexWarehouse})});
+    }
 }
 
-void Environment::reassignmentPolicyLB(int timeLimit)
+void Environment::basePolicy(int policy)
 {
     std::cout<<"----- Simulation starts -----"<<std::endl;
    
@@ -707,25 +646,24 @@ void Environment::reassignmentPolicyLB(int timeLimit)
     std::vector< float> averageRejectionRateVector;
     std::vector< float> meanWaitingTimeVector;
     std::vector< float> maxWaitingTimeVector;
-    std::vector< int> vectorOfKs(data->nbWarehouses, 11);
 
     for (int epoch = 1; epoch <= 500; epoch++) {
         // Initialize data structures
-        initialize(timeLimit, vectorOfKs);
+        initialize();
         
         // Start with simulation
         int counter = 0;
         currentTime = 0;
         timeCustomerArrives = 0;
         timeNextCourierArrivesAtOrder = INT_MAX;
-        while (currentTime < timeLimit || ordersAssignedToCourierButNotServed.size() > 0){
+        while (currentTime < data->simulationTime*3600 || ordersAssignedToCourierButNotServed.size() > 0){
             // Keep track of current time
             if (counter == orderTimes.size()-1){
                 currentTime = timeNextCourierArrivesAtOrder;
             }else{
                 currentTime = std::min(timeCustomerArrives, timeNextCourierArrivesAtOrder);
             }
-            if (timeCustomerArrives < timeNextCourierArrivesAtOrder && currentTime <= timeLimit && counter<orderTimes.size()-1){
+            if (timeCustomerArrives < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*3600  && counter<orderTimes.size()-1){
                 timeCustomerArrives += orderTimes[counter];
                 currentTime = timeCustomerArrives;
                 counter += 1;
@@ -734,7 +672,12 @@ void Environment::reassignmentPolicyLB(int timeLimit)
                 initOrder(timeCustomerArrives, newOrder);
                 orders.push_back(newOrder);
                 // We immediately assign the order to a warehouse and a picker
-                chooseWarehouseForOrderHardConstraint(newOrder);
+                if (policy==0){
+                    chooseClosestWarehouseForOrder(newOrder);
+                }else if(policy == 1){
+                    chooseWarehouseForOrderReassignment(newOrder);
+                }
+                
                 if (newOrder->accepted){
                     newOrder->assignedWarehouse->ordersAssigned.push_back(newOrder);
                     choosePickerForOrder(newOrder);
@@ -774,15 +717,148 @@ void Environment::reassignmentPolicyLB(int timeLimit)
 
 }
 
+void Environment::trainPolicy()
+{
+    std::cout<<"----- Train policy starts -----"<<std::endl;
+    
+    auto assignmentNet = std::make_shared<neuralNetwork>(data->nbWarehouses*5, data->nbWarehouses+1);
+    torch::Tensor lossAssignmentNet;
+    double running_costs = 0.0;
+    double runningCounter = 0.0;
+    double runnining_rejections = 0.0;
+    std::vector< float> averageCostVector;
+    std::vector< float> averageRejectionRateVector;
+    std::vector< float> meanWaitingTimeVector;
+    std::vector< float> maxWaitingTimeVector;
+
+    for (int epoch = 1; epoch <= 500; epoch++) {
+        // Initialize data structures
+        initialize();
+        
+        // Start with simulation
+        int counter = 0;
+        currentTime = 0;
+        timeCustomerArrives = 0;
+        timeNextCourierArrivesAtOrder = INT_MAX;
+        while (currentTime < data->simulationTime*3600  || ordersAssignedToCourierButNotServed.size() > 0){
+            // Keep track of current time
+            if (counter == orderTimes.size()-1){
+                currentTime = timeNextCourierArrivesAtOrder;
+            }else{
+                currentTime = std::min(timeCustomerArrives, timeNextCourierArrivesAtOrder);
+            }
+            if (timeCustomerArrives < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*3600  && counter<orderTimes.size()-1){
+                timeCustomerArrives += orderTimes[counter];
+                currentTime = timeCustomerArrives;
+                counter += 1;
+                // Draw new order and assign it to warehouse, picker and courier. MUST BE IN THAT ORDER!!!
+                Order* newOrder = new Order;
+                initOrder(timeCustomerArrives, newOrder);
+                orders.push_back(newOrder);
+                // We immediately assign the order to a warehouse and a picker
+                chooseWarehouseForOrderNN(newOrder, *assignmentNet);
+                
+                
+                if (newOrder->accepted){
+                    newOrder->assignedWarehouse->ordersAssigned.push_back(newOrder);
+                    choosePickerForOrder(newOrder);
+                    chooseCourierForOrder(newOrder);
+                    AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
+                }
+            }else { // when a courier arrives at an order
+                if (nextOrderBeingServed){
+                    Courier* c = nextOrderBeingServed->assignedCourier;
+                    // We choose a warehouse for the courier
+                    chooseClosestWarehouseForCourier(c);
+                }
+            }
+
+        }
+        double occuredCosts = getObjValue();
+        running_costs += occuredCosts;
+        runningCounter += 1;
+        runnining_rejections += (float)rejectCount/ orders.size();
+        averageCostVector.push_back(occuredCosts);
+        averageRejectionRateVector.push_back((float)rejectCount/(float)orderTimes.size());
+        if (nbOrdersServed > 0){
+            //std::cout<<"----- Iteration: " << epoch << " Number of orders that arrived: " << orders.size() << " and served: " << nbOrdersServed << " Obj. value: " << getObjValue() << ". Mean wt: " << totalWaitingTime/nbOrdersServed <<" seconds. Highest wt: " << highestWaitingTimeOfAnOrder <<" seconds. -----" <<std::endl;
+            meanWaitingTimeVector.push_back(totalWaitingTime/nbOrdersServed);
+            maxWaitingTimeVector.push_back(highestWaitingTimeOfAnOrder);
+        }else{
+            meanWaitingTimeVector.push_back(0);
+            maxWaitingTimeVector.push_back(0);
+        }
+
+        //std::cout<<"----- Simulation finished -----"<<std::endl;
+        //std::cout<<"----- Number of orders that arrived: " << orders.size() << " and served: " << nbOrdersServed << " Obj. value: " << getObjValue() << ". Mean wt: " << totalWaitingTime/nbOrdersServed <<" seconds. Highest wt: " << highestWaitingTimeOfAnOrder <<" seconds. -----" <<std::endl;
+        //writeRoutesAndOrdersToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
+    }
+    //writeStatsToFile(averageCostVector, averageRejectionRateVector, meanWaitingTimeVector, maxWaitingTimeVector);
+    std::cout<< "Iterations: " << runningCounter <<" Average costs: " << running_costs / runningCounter << " Average rejection rate: " <<  runnining_rejections / runningCounter <<std::endl;
+
+}
+
+
+void Environment::simulateFromKOn(int k, neuralNetwork& n)
+{
+    std::cout<<"----- Simulate from k -----"<<std::endl;
+    initalizeForCostEstimation();
+    // Start with simulation
+    int counter = 0;
+    currentTime = 0;;
+    timeCustomerArrives = 0;
+    timeNextCourierArrivesAtOrder = INT_MAX;
+    while (currentTime < data->simulationTime*3600  || ordersAssignedToCourierButNotServed.size() > 0){
+        // Keep track of current time
+        if (counter == orderTimes.size()-1){
+            currentTime = timeNextCourierArrivesAtOrder;
+        }else{
+            currentTime = std::min(timeCustomerArrives, timeNextCourierArrivesAtOrder);
+        }
+        if (timeCustomerArrives < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*3600  && counter<orderTimes.size()-1){
+            timeCustomerArrives += orderTimes[counter];
+            currentTime = timeCustomerArrives;
+            counter += 1;
+            // Draw new order and assign it to warehouse, picker and courier. MUST BE IN THAT ORDER!!!
+            Order* newOrder = new Order;
+            initOrder(timeCustomerArrives, newOrder);
+            orders.push_back(newOrder);
+            // We immediately assign the order to a warehouse and a picker
+            if (counter > k){
+                chooseWarehouseForOrderNN(newOrder, n);
+            }else{
+                newOrder->assignedWarehouse = orders[newOrder->orderID]->assignedWarehouse;
+                newOrder->accepted = true;
+            }
+
+            
+            
+            if (newOrder->accepted){
+                newOrder->assignedWarehouse->ordersAssigned.push_back(newOrder);
+                choosePickerForOrder(newOrder);
+                chooseCourierForOrder(newOrder);
+                AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
+            }
+        }else { // when a courier arrives at an order
+            if (nextOrderBeingServed){
+                Courier* c = nextOrderBeingServed->assignedCourier;
+                // We choose a warehouse for the courier
+                chooseClosestWarehouseForCourier(c);
+            }
+        }
+
+    }
+}
+
 void Environment::simulate(char *argv[])
 {   
-    int timeLimit = std::stoi(argv[2])*3600;
-    if (std::string(argv[5]) == "tuneK"){
-        tuneK(timeLimit);
-    }else if(std::string(argv[5])== "reassignmentPolicyLB"){
-        reassignmentPolicyLB(timeLimit);
-    }    
-    else{
+    if(std::string(argv[5])== "nearestWarehouse"){
+        basePolicy(0);
+    }else if(std::string(argv[5])== "reassignmentPolicy"){
+        basePolicy(1);
+    }else if(std::string(argv[5])== "nnPolicy"){
+        trainPolicy();
+    }else{
         std::cerr<<"Method: " << argv[5] << " not found."<<std::endl;
     }
 

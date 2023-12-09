@@ -97,10 +97,11 @@ public:
 	int nbWarehouses;						// Number of warehouses
 	int nbCouriers;							// Total Number of couriers
 	int nbPickers;							// Total number of pickers
-	int penaltyForNotServing;				// Penalty for not serving (rejecting) an order. In seconds!
+	int maxWaiting;							// Time in which order must be served (hard constraint). In seconds!
 	double interArrivalTime;				// Inter arrival time of incoming orders
 	double meanCommissionTime;				// Mean time it takes to commission an order (exponential distributed)
 	double meanServiceTimeAtClient;			// Mean time it takes to serivce an order (at the client) (exponential distributed)
+	int simulationTime;						// The time in hours the system is simulated
 	std::vector<Client> paramClients;		// Vector containing information on each client
 	std::vector<Warehouse> paramWarehouses;	// Vector containing information on each warehouse
 	Matrix travelTime;						// Distance matrix from clients to warehouses (symetric)
