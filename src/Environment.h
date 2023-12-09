@@ -32,6 +32,7 @@ public:
 private:
 	Data* data;													// Problem parameters
 	std::vector<Order*> orders;									// Vector of pointers to orders. containing information on each order
+	std::vector<Order*> ordersNewSimulation;
 	std::vector<Order*> ordersAssignedToCourierButNotServed;	// Vector of orders that have not been served yet
 	std::vector<Warehouse*> warehouses;							// Vector of pointers containing information on each warehouse
 	std::vector<Courier*> couriers;								// Vector of pointers containing  information on each courier
@@ -60,7 +61,7 @@ private:
 	void initialize();
 
 	// Function to initialize the values of an order
-	void initOrder(int currentTime, Order* o);
+	void initOrder(int currentTime, int id, Order* o);
 
 	// Function that checks if order can be assigned to warehouse without hurting the time window
 	bool isFeasible(Order* newOrder, Warehouse* warehouse);
@@ -120,9 +121,9 @@ private:
 
 	// Function that returns the state as a tensor
 	torch::Tensor getState(Order* order);
-	void chooseWarehouseForOrderNN(Order* newOrder, neuralNetwork& n);
+	void chooseWarehouseForOrderNN(Order* newOrder, neuralNetwork& n, bool collectStates);
 	void trainPolicy();
-	void simulateFromKOn(int k, neuralNetwork& n);
+	int simulateFromKOn(int k, neuralNetwork& n);
 	void initalizeForCostEstimation();
 };
 
@@ -140,6 +141,7 @@ struct neuralNetwork : torch::nn::Module {
 		// Use one of many tensor manipulation functions.
 		x = torch::layer_norm(x, (x.size(1)));
 		x = torch::leaky_relu(fc1->forward(x));
+		x = torch::layer_norm(x, (x.size(1)));
 		x = torch::leaky_relu(fc2->forward(x));
 		x = torch::leaky_relu(fc3->forward(x));
 		x = fc4->forward(x);
