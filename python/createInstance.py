@@ -10,7 +10,6 @@ def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, 
         limit (int): Clients whose minimum distance (in seconds) to a warehouse is above this limit are excluded 
         couriersPerWarehouse (int): number of couriers that a warehouse has at the start
         pickersPerWarehouse (int): number of pickers that a warehouse has
-        interArrivalTime (int): arrival rate (exponentially distributed) of orders (in seconds)
         meanComissionTime (int): Time a picker needs on average to comission an order (expoentially distributed) (in seconds)
         meanServiceTimeAtClient (int): Mean time a courier needs at the clients door to deliver the order (expoentially distributed) (in seconds)
     Returns:
@@ -21,12 +20,15 @@ def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, 
     df = df.to_numpy()
     random.seed(422)
     rndIdxs = random.sample(range(len(df)), round(len(df)*0.75))
-    clients = df[rndIdxs,:3]
-    matrix = df[rndIdxs,3:].astype(int)
-    #clients = df[:,:3]
-    #matrix = df[:,3:].astype(int)
-    #clients = np.delete(clients, rndIdxs, axis=0)
-    #matrix = np.delete(matrix, rndIdxs, axis=0)
+    
+    # clients = df[rndIdxs,:3]
+    # matrix = df[rndIdxs,3:].astype(int)
+    
+    # Comment the following block out in case of creating test instance
+    clients = df[:,:3]
+    matrix = df[:,3:].astype(int)
+    # clients = np.delete(clients, rndIdxs, axis=0)
+    # matrix = np.delete(matrix, rndIdxs, axis=0)
 
     with open('data/getirStores.json') as fp:
         getirStores = json.load(fp)
@@ -82,7 +84,6 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
         limit (int): Clients whose minimum distance (in seconds) to a warehouse is above this limit are excluded 
         couriersPerWarehouse (int): number of couriers that a warehouse has at the start
         pickersPerWarehouse (int): number of pickers that a warehouse has
-        interArrivalTime (int): arrival rate (exponentially distributed) of orders (in seconds)
         meanComissionTime (int): Time a picker needs on average to comission an order (expoentially distributed) (in seconds)
         meanServiceTimeAtClient (int): Mean time a courier needs at the clients door to deliver the order (expoentially distributed) (in seconds)
     Returns:
@@ -147,5 +148,5 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
 
 
 if __name__ == "__main__":
-    create_instance(fileName = "instance_train", limit=900, couriersPerWarehouse=8, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=60)
-    create_grid_instance(fileName = "instance_grid", couriersPerWarehouse=8, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=60)
+    create_instance(fileName = "instance_train", limit=500, couriersPerWarehouse=10, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=60)
+    create_grid_instance(fileName = "instance_grid", couriersPerWarehouse=8, pickersPerWarehouse=4, meanComissionTime=180, meanServiceTimeAtClient=60)

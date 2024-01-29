@@ -19,11 +19,9 @@ set(HDR_FILES
     src/xorshift128.h
 )
 
-find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 
 # Create an executable target
 add_executable(onlineAssignment ${SRC_FILES} ${HDR_FILES})
-target_link_libraries(onlineAssignment "${TORCH_LIBRARIES}")
 set_property(TARGET onlineAssignment PROPERTY CXX_STANDARD 14)

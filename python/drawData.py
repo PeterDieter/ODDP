@@ -1,12 +1,18 @@
 import pandas as pd
 import plotly.graph_objects as go
 import json
+import numpy as np
 
 
 
-def plotData(clients, warehouses):
-    df = pd.DataFrame(clients, columns =['Idx','Latitude', 'Longitude'])
-    fig = go.Figure(go.Scattermapbox(lat=df.Latitude, lon=df.Longitude, marker=go.scattermapbox.Marker(
+def plotData(clients, warehouses, limit):
+    df = clients.to_numpy()
+    matrix = df[:,3:].astype(int)
+    minValues = matrix.min(axis=1)
+    notInLimit = np.where(minValues > limit)[0]
+    clients = clients.drop(notInLimit)
+    
+    fig = go.Figure(go.Scattermapbox(lat=clients.Latitude, lon=clients.Longitude, marker=go.scattermapbox.Marker(
                 size=5,
                 color='grey',
                 opacity=1
@@ -33,6 +39,6 @@ if __name__ == "__main__":
     with open('data/getirStores.json') as fp:
         getirStores = json.load(fp)
 
-    Stopls = pd.read_csv("data/stopData15Minutes.csv", header=None, names=['Idx','Latitude', 'Longitude']) 
+    Stopls = pd.read_csv("data/allDurations15.csv", header=0) 
 
-    plotData(Stopls, getirStores)
+    plotData(Stopls, getirStores, 500)

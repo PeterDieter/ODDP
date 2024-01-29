@@ -5,7 +5,7 @@ In the problem at hand, we operate multiple warehouse (depots) in a service regi
 Visualization of the problem (made in [visualizeSimulation.py](python/visualizeSimulation.py)):
 
 <p align="center">
-<img src="animation_REINFORCE.gif" width="300" height="400" align="center">
+<img src="animation.gif" width="300" height="400" align="center">
 </p>
 
 
@@ -14,18 +14,16 @@ For the warehouses, we use (the 10) Getir stores in Chicago. For the order data,
 
 
 ## C++ compiling 
-Data is prepared in Python and an instance is then passed to C++. The raw and processed data is contained in folder [data](data). All code related to preprocessing data (including Isochrone API and DistanceMatrix API) and creating code to create instances is contained in [python](python).
-
-For neural network stuff, we use Pytorch. So make sure that Pytorch is installed and check [this](https://github.com/pytorch/pytorch/issues/12449) out if cmake has trouble finding Pytorch. Furthermore, we use cmake to create an executable. Run 
+Data is prepared in Python and an instance is then passed to C++. The raw and processed data is contained in folder [data](data). All code related to preprocessing data (including Isochrone API and DistanceMatrix API) and creating code to create instances is contained in [python](python). To create a Makefile, we use cmake:
 
 ```
-cmake -DCMAKE_PREFIX_PATH=$PWD/../libtorch
-make
+cmake CMakeLists.txt
 ```
-alternatively, you might want to try:
+
+When the Makefile is generated, you can run:
 
 ```
-cmake -DCMAKE_PREFIX_PATH=$PWD/../../libtorch
+make clean
 make
 ```
 
@@ -40,9 +38,9 @@ You can then execute the code with:
 where **instanceName** gives the path to the .txt file containing the instance information. The second parameter is the **simulation length** in hours (int). The third parameter is the **max waiting time** in seconds (int). The fourth parameter is the **interarrival rate** in seconds (int). The **methodName** is a string that determines the method which will be applied/trained for the assignment problem. For example:
 
 ```
-./onlineAssignment instances/instance_train.txt 16 3600 20 nearestWarehouse
+./onlineAssignment instances/instance_grid.txt 5 1800 25 nearestWarehouse
 ```
 
 Currently, the following assigning strategies are available:
 1. nearestWarehouse: In this policy, we assign each order to the nearest warehouse. If order cannot be served on time, we reject.
-2. reassignmentPolicy: We check if order can be assigned to any warehouse. We choose the warehouse with lowest waiting for the order.
+2. reassignment: We check if order can be assigned to any warehouse. We choose the warehouse with lowest waiting for the order.

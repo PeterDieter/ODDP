@@ -20,9 +20,11 @@ struct Order;
 // Structure of a Client, including its index, position
 struct Client
 {
-	int clientID;				// IDex of the client
-	double lat;					// Latitude
-	double lon;					// Longitude 
+	int clientID;						// IDex of the client
+	double lat;							// Latitude
+	double lon;							// Longitude 
+	std::vector< int> nbOrders;			// the number of times the client ordered per hour
+	std::vector< int> nbRejected;			// the number of time the client's order was rejected per hour
 };
 
 // Structure of a Warehouse, including its index, position
@@ -35,10 +37,9 @@ struct Warehouse
 	std::vector< Picker*> pickersAssigned; 				// vector of pointers to pickers which are assigned to the warehouse
 	std::vector< Order*> ordersNotAssignedToCourier;	// vector to orders that are assigned to the warehouse, but not to a courier yet
 	std::vector< Order*> ordersAssigned;				// vector to orders that are assigned to the warehouse
+	int currentNbCustomers;								// Current number of customers in the system
 	double lat;											// Latitude
 	double lon;											// Longitude 
-	int K;												// If there are more orders in the system than this value, orders will be rejected
-	double costsIncurred;								// The costs incurred by customers assigned to this warehouse (or rejected and closest to this warehouse).
 };
 
 
@@ -51,6 +52,7 @@ struct Order
 	Warehouse* assignedWarehouse; 	// pointer to warehouse the order is assigned to
 	Courier* assignedCourier;		// Courier assigned to order
 	Picker* assignedPicker;			// Picker assigned to order
+	bool assignedToNearest;			// States if an  order was assigned to its nearest warehouse
 	int orderTime;					// Time the order arrives in the system
 	int timeToComission;			// Time it takes to comission the order
 	int serviceTimeAtClient;		// Time it takes to serve the client at the door
@@ -98,7 +100,7 @@ public:
 	int nbCouriers;							// Total Number of couriers
 	int nbPickers;							// Total number of pickers
 	int maxWaiting;							// Time in which order must be served (hard constraint). In seconds!
-	double interArrivalTime;				// Inter arrival time of incoming orders
+	std::vector<int> hourlyArrivalRates;	// Vector of time dependent arrival times in seconds.
 	double meanCommissionTime;				// Mean time it takes to commission an order (exponential distributed)
 	double meanServiceTimeAtClient;			// Mean time it takes to serivce an order (at the client) (exponential distributed)
 	int simulationTime;						// The time in hours the system is simulated

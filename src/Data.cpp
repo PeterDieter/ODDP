@@ -20,13 +20,15 @@ Data::Data(char * argv[])
 	nbWarehouses = 0;
 	nbCouriers = 0;
 	nbPickers = 0;
-	simulationTime = std::stoi(argv[2]);
-	maxWaiting = std::stoi(argv[3]);
-	interArrivalTime = std::stoi(argv[4]);
+	maxWaiting = std::stoi(argv[2]);
 	meanCommissionTime = 180;
 	meanServiceTimeAtClient = 60;
 	paramClients = std::vector<Client>(40000); // 40000 is an upper limit, can be increase ofc
 	paramWarehouses = std::vector<Warehouse>(30); // 30 is an upper limit, can be increased ofc
+	//hourlyArrivalRates = {23,24,17,14,13,12,15,18,21,24,24,230,240,17,14,13,12,15,18,21,24,24};
+	//hourlyArrivalRates = {40,38,34,30,26,23,21,22,23,24,24,20,18,19,16,14,15,16,19,22,23};
+	//hourlyArrivalRates = {24,25,24,14,19,24,23,24,14,12,18,24,24};
+	hourlyArrivalRates = {18,18,18,18,17,16,15,14,15,16,17,18,18,18};
 	std::string content, content2, content3;
 	std::ifstream inputFile(argv[1]);
 	if (!inputFile) throw std::runtime_error("Could not find file instance");
@@ -41,10 +43,6 @@ Data::Data(char * argv[])
 			else if (content == "NUMBER_WAREHOUSES")
 				{
 					inputFile >> content2 >> nbWarehouses;
-				}
-			else if (content == "INTER_ARRIVAL_TIME")
-				{
-					inputFile >> content2 >> interArrivalTime;
 				}
 			else if (content == "MEAN_COMMISSION_TIME")
 				{
@@ -73,6 +71,8 @@ Data::Data(char * argv[])
 					for (int i = 0; i < nbClients; i++)
 					{
 						inputFile >> paramClients[i].clientID >> paramClients[i].lon >> paramClients[i].lat;
+						paramClients[i].nbOrders.assign(hourlyArrivalRates.size(), 0);
+						paramClients[i].nbRejected.assign(hourlyArrivalRates.size(), 0);
 					}
 								// Reduce the size of the vector of clients if possible
 					paramClients.resize(nbClients);
