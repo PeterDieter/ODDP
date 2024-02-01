@@ -62,9 +62,11 @@ private:
 
 	// Function that checks if order can be assigned to warehouse without hurting the time window
 	bool isFeasible(Order* newOrder, Warehouse* warehouse);
+	bool customerChoice(Order* newOrder, Warehouse* warehouse);
 
 	// Functions that assigns order to a warehouse, picker and courier, respectively
 	void chooseClosestWarehouseForOrder(Order* newOrder);
+	void chooseWarehouseBasedOnQuadrant(Order* newOrder);
 	void choosePickerForOrder(Order* newOrder);
 	void chooseCourierForOrder(Order* newOrder);
 

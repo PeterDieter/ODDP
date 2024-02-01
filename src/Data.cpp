@@ -12,6 +12,40 @@
 #include "xorshift128.h"
 
 
+int Quadrant::num_quad = 0;
+
+// defautl constructor
+Quadrant::Quadrant() {
+	quadrantID = num_quad++;
+	latSW = lonSW = latNE = lonNE = 0;
+	assignedToWarehouse = nullptr;
+	clientsInQuadrant = std::vector<Client*>(0);
+	contains_client = false;
+	is_served = true;
+	neighbours = std::vector< Quadrant*>(4);
+	num_active_neighbours = 0;
+};
+
+// constructor (WARNING unused atm)
+Quadrant::Quadrant(int _ID,double _latSW,double _lonSW,double _latNE,double _lonNE,Warehouse* _WH,std::vector< Client*> _CL)
+									: quadrantID(_ID), latSW(_latSW), lonSW(_lonSW), latNE(_latNE), lonNE(_lonNE), assignedToWarehouse(_WH), clientsInQuadrant(_CL) {
+	num_quad++;
+	contains_client = ( _CL.size() > 0 );
+	is_served = true;
+	neighbours = std::vector< Quadrant*>(4);
+	num_active_neighbours = 0;
+};
+
+// destructor
+Quadrant::~Quadrant() {
+	num_quad--;										// update static counter
+	clientsInQuadrant.resize(0);	// clean up (probably not necessary for vector class)
+	neighbours.resize(0);
+};
+
+
+/***********************************************************************/
+
 
 Data::Data(char * argv[])
 {
@@ -27,8 +61,9 @@ Data::Data(char * argv[])
 	paramWarehouses = std::vector<Warehouse>(30); // 30 is an upper limit, can be increased ofc
 	//hourlyArrivalRates = {23,24,17,14,13,12,15,18,21,24,24,230,240,17,14,13,12,15,18,21,24,24};
 	//hourlyArrivalRates = {40,38,34,30,26,23,21,22,23,24,24,20,18,19,16,14,15,16,19,22,23};
-	//hourlyArrivalRates = {24,25,24,14,19,24,23,24,14,12,18,24,24};
-	hourlyArrivalRates = {18,18,18,18,17,16,15,14,15,16,17,18,18,18};
+	hourlyArrivalRates = {25,25,25,25,25,25,25,17,17,17,17,17};
+	//hourlyArrivalRates = {24,25,24,16,19,24,23,24,14,15,18,24,24};
+	//hourlyArrivalRates = {23,21,21,21,20,19,18,14,13,17,18,21,21,21};
 	std::string content, content2, content3;
 	std::ifstream inputFile(argv[1]);
 	if (!inputFile) throw std::runtime_error("Could not find file instance");
@@ -51,6 +86,22 @@ Data::Data(char * argv[])
 			else if (content == "MEAN_SERVICE_AT_CLIENT_TIME")
 				{
 					inputFile >> content2 >> meanServiceTimeAtClient;
+				}
+			else if (content == "GRID_SW_COORDINATES")
+				{
+					inputFile >> content2 >> grid.lonSW >> grid.latSW;
+				}
+			else if (content == "GRID_NE_COORDINATES")
+				{
+					inputFile >> content2 >> grid.lonNE >> grid.latNE;
+				}
+			else if (content == "STEPSIZE_LAT")
+				{
+					inputFile >> content2 >> grid.stepLat;
+				}
+			else if (content == "STEPSIZE_LON")
+				{
+					inputFile >> content2 >> grid.stepLon;
 				}
 			else if (content == "WAREHOUSE_SECTION")
 				{

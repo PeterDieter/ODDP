@@ -47,6 +47,15 @@ public:
         
         return vectorSlice;
     }
+        // Resize Matrix if default constructor was used to initialize
+    void setDimension(const int _col, const int _row) {
+			cols_ = _col;
+			rows_ = _row;
+			data_.resize(_col * _row);
+			
+			return;
+	}
+
 
 };
 

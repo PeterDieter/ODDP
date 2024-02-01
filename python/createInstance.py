@@ -2,8 +2,11 @@ import pandas as pd
 import numpy as np
 import json
 import random
+import geopandas as gpd
+import utm
 
-def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, pickersPerWarehouse: int=3, meanComissionTime: int=120, meanServiceTimeAtClient: int=60):
+
+def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, pickersPerWarehouse: int=3, meanComissionTime: int=120, meanServiceTimeAtClient: int=60, gridStepSize: int=300):
     """Create a .txt file of a problem instance
     Args:
         fileName (str): File in which we save the instance parameters
@@ -41,6 +44,44 @@ def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, 
     clients = np.delete(clients, notInLimit, axis=0)
     matrix = np.delete(matrix, notInLimit, axis=0)
 
+     # Grid Stuff
+    points = gpd.read_file('data/Polygon_900s/Polygon_900s.shp')
+    xmin, ymin, xmax, ymax = points.total_bounds
+
+    # Create corners of rectangle to be transformed to a grid
+    sw = utm.from_latlon(ymin, xmin)
+    ne = utm.from_latlon(ymax, xmax)
+
+    # Iterate over 2D area
+    gridpointsAll = []
+    x = sw[1]
+    while x < ne[1]:
+        y = sw[0]
+        gridpoints = []
+        while y < ne[0]:
+            p = utm.to_latlon(y, x, sw[2], sw[3])
+            gridpoints.append(p)
+            y += gridStepSize
+        gridpointsAll.append(gridpoints)
+        x += gridStepSize
+
+    counter = 0
+    gridDict = {}
+    list1, list2 = [], []
+    for rowIndex, row in enumerate(gridpointsAll):
+        if rowIndex == len(gridpointsAll)-1:
+            continue
+        for colIndex, col in enumerate(row):
+            if colIndex == len(row)-1:
+                continue
+            counter += 1
+            list1.append(gridpointsAll[rowIndex+1][colIndex+1][1]-gridpointsAll[rowIndex][colIndex][1])
+            list2.append(gridpointsAll[rowIndex+1][colIndex+1][0]-gridpointsAll[rowIndex][colIndex][0])
+
+    stepLat = round(sum(list1) / len(list1), 8)
+    stepLon = round(sum(list2) / len(list2), 8)
+
+
     with open("instances/"+fileName+".txt", 'w') as f:
         f.write("\n".join([
             "{} : {}".format(k, v)
@@ -50,6 +91,16 @@ def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, 
                 ("NUMBER_WAREHOUSES", len(warehouses)),
                 ("MEAN_COMMISSION_TIME", meanComissionTime),
                 ("MEAN_SERVICE_AT_CLIENT_TIME", meanServiceTimeAtClient)]
+        ]))
+        f.write("\n")
+
+        f.write("\n".join([
+            "{} : {} {}".format(k, v, u)
+            for k, v, u in [
+                ("GRID_SW_COORDINATES", xmin, ymin),
+                ("GRID_NE_COORDINATES", xmax, ymax),
+                ("STEPSIZE_LAT", stepLat, ""),
+                ("STEPSIZE_LON", stepLon, "")]
         ]))
         f.write("\n")
         
@@ -148,5 +199,5 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
 
 
 if __name__ == "__main__":
-    create_instance(fileName = "instance_train", limit=500, couriersPerWarehouse=10, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=60)
+    create_instance(fileName = "instance_train", limit=900, couriersPerWarehouse=10, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=60)
     create_grid_instance(fileName = "instance_grid", couriersPerWarehouse=8, pickersPerWarehouse=4, meanComissionTime=180, meanServiceTimeAtClient=60)

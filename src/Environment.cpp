@@ -103,8 +103,8 @@ void Environment::initialize()
     timesToServe = std::vector<int>(0);
     int currTime = 0;
     int nextTime;
-    while (currTime < data->simulationTime*1800){
-        nextTime = drawFromExponentialDistribution(data->hourlyArrivalRates[currTime/1800]);
+    while (currTime < data->simulationTime*3600){
+        nextTime = drawFromExponentialDistribution(data->hourlyArrivalRates[currTime/3600]);
         currTime += nextTime;
         orderTimes.push_back(nextTime);
         clientsVector.push_back(data->rng() % data->nbClients);
@@ -337,7 +337,7 @@ void Environment::updateOrderBeingServedNext(){
 
 void Environment::writeOrderStatsToClients(){
     for (Order* o: orders){
-        int hour = o->orderTime/1800;
+        int hour = o->orderTime/3600;
         o->client->nbOrders[hour] += 1;
         if (!o->accepted){
             o->client->nbRejected[hour] += 1;
@@ -373,6 +373,21 @@ bool Environment::isFeasible(Order* newOrder, Warehouse* warehouse){
     int waitingForPickerTime = fastestPickerTimeAvailable-currentTime;
 
     if (distancesToWarehouses[indexClosestWarehouse] + newOrder->timeToComission + std::max(0,waitingForPickerTime) + std::max(0,waitingForCourierTime) <= data->maxWaiting){
+        return true;
+    }
+    return false;
+}
+
+bool Environment::customerChoice(Order* newOrder, Warehouse* warehouse){
+    std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
+    int fastestPickerTimeAvailable = getFastestAvailablePicker(warehouse)->timeWhenAvailable;
+    int waitingForCourierTime = getFastestAvailableCourier(warehouse)->timeWhenAvailable-(currentTime + newOrder->timeToComission + std::max(0,fastestPickerTimeAvailable-currentTime));
+    int waitingForPickerTime = fastestPickerTimeAvailable-currentTime;
+    double randomNumber = ((double) rand() / (RAND_MAX));
+    double totalTime = (distancesToWarehouses[warehouse->wareID] + newOrder->timeToComission + std::max(0,waitingForPickerTime) + std::max(0,waitingForCourierTime));
+    double treshhold = 1 - ((totalTime-600) * (double) 1/(data->maxWaiting-600));
+
+    if (randomNumber < treshhold){
         return true;
     }
     return false;
@@ -441,9 +456,20 @@ void Environment::chooseClosestWarehouseForOrder(Order* newOrder)
     // We just assign the order to the closest warehouse
     std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
     int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
-
-    if (isFeasible(newOrder, warehouses[indexClosestWarehouse])){
+    // std::cout<<newOrder->client->inQuadrant<<std::endl;
+    if (customerChoice(newOrder, warehouses[indexClosestWarehouse])){
         newOrder->assignedWarehouse = warehouses[indexClosestWarehouse];
+        newOrder->accepted = true;
+    }else{
+        newOrder->accepted = false;
+        rejectCount++;
+    }
+}
+
+void Environment::chooseWarehouseBasedOnQuadrant(Order* newOrder)
+{
+    if (customerChoice(newOrder, warehouses[newOrder->client->inQuadrant->assignedToWarehouse->wareID])){
+        newOrder->assignedWarehouse = warehouses[newOrder->client->inQuadrant->assignedToWarehouse->wareID];
         newOrder->accepted = true;
     }else{
         newOrder->accepted = false;
@@ -455,34 +481,26 @@ void Environment::chooseClosestWarehouseForOrder(Order* newOrder)
 void Environment::chooseWarehouseForOrderReassignment(Order* newOrder, float penaltyParameter)
 {
     std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
-    int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
-    
-    if (isFeasible(newOrder, warehouses[indexClosestWarehouse])){
-        newOrder->assignedWarehouse = warehouses[indexClosestWarehouse];
+    int warehouseCounter = 0;
+    std::vector<int> indices(data->nbWarehouses);
+    std::vector< int> costs(data->nbWarehouses, INT16_MAX);
+    for(Warehouse* w: warehouses){
+        int waitingForPickerTime = std::max(0,getFastestAvailablePicker(w)->timeWhenAvailable -currentTime);
+        int waitingForCourierTime = std::max(0,getFastestAvailableCourier(w)->timeWhenAvailable-(currentTime+ newOrder->timeToComission + waitingForPickerTime));
+        costs[warehouseCounter] = (distancesToWarehouses[warehouseCounter]*penaltyParameter + newOrder->timeToComission + waitingForPickerTime + waitingForCourierTime);
+        indices[warehouseCounter] = warehouseCounter;
+        warehouseCounter += 1;
+    }
+    std::sort(indices.begin(), indices.end(),[&](int A, int B) -> bool {return costs[A] < costs[B];});
+
+    if (customerChoice(newOrder, warehouses[indices[0]]))
+    {
+        newOrder->assignedWarehouse = warehouses[indices[0]];
         newOrder->accepted = true;
     }else{
-        int warehouseCounter = 0;
-        std::vector<int> indices(data->nbWarehouses);
-        std::vector< int> costs(data->nbWarehouses, INT16_MAX);
-        for(Warehouse* w: warehouses){
-            int waitingForPickerTime = std::max(0,getFastestAvailablePicker(w)->timeWhenAvailable -currentTime);
-            int waitingForCourierTime = std::max(0,getFastestAvailableCourier(w)->timeWhenAvailable-(currentTime+ newOrder->timeToComission + waitingForPickerTime));
-            costs[warehouseCounter] = distancesToWarehouses[warehouseCounter]*penaltyParameter + newOrder->timeToComission + waitingForPickerTime + waitingForCourierTime;
-            indices[warehouseCounter] = warehouseCounter;
-            warehouseCounter += 1;
-        }
-        std::sort(indices.begin(), indices.end(),[&](int A, int B) -> bool {return costs[A] < costs[B];});
-
-        if (costs[indices[0]] <= data->maxWaiting)
-        {
-            newOrder->assignedWarehouse = warehouses[indices[0]];
-            newOrder->accepted = true;
-        }else{
-            newOrder->accepted = false;
-            rejectCount++;
-        }
-  }
-
+        newOrder->accepted = false;
+        rejectCount++;
+    }
 }
 
 void Environment::basePolicy(int policy)
@@ -505,14 +523,14 @@ void Environment::basePolicy(int policy)
         currentTime = 0;
         timeCustomerArrives = 0;
         timeNextCourierArrivesAtOrder = INT_MAX;
-        while (currentTime < data->simulationTime*1800 || ordersAssignedToCourierButNotServed.size() > 0){
+        while (currentTime < data->simulationTime*3600 || ordersAssignedToCourierButNotServed.size() > 0){
             // Keep track of current time
-            if (counter == orderTimes.size()-1){
+            if ((size_t) counter == orderTimes.size()-1){
                 currentTime = timeNextCourierArrivesAtOrder;
             }else{
                 currentTime = std::min(timeCustomerArrives + orderTimes[counter] , timeNextCourierArrivesAtOrder);
             }
-            if (timeCustomerArrives + orderTimes[counter] < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*1800  && counter<orderTimes.size()-1){
+            if (timeCustomerArrives + orderTimes[counter] < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*3600  && (size_t) counter<orderTimes.size()-1){
                 timeCustomerArrives += orderTimes[counter];
                 currentTime = timeCustomerArrives;
                 counter += 1;
@@ -524,7 +542,9 @@ void Environment::basePolicy(int policy)
                 if (policy==0){
                     chooseClosestWarehouseForOrder(newOrder);
                 }else if(policy == 1){
-                    chooseWarehouseForOrderReassignment(newOrder, 2);
+                    chooseWarehouseForOrderReassignment(newOrder, 0);
+                }else if(policy == 2){
+                    chooseWarehouseBasedOnQuadrant(newOrder);
                 }
                 
                 if (newOrder->accepted){
@@ -598,12 +618,12 @@ void Environment::tuneParameters()
 {
     std::cout<<"----- Parameter tuning starts -----"<<std::endl;
    
-    std::vector<float> ActionSpace{1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0};
+    std::vector<float> ActionSpace{1.0, 1.5, 2, 2.5, 3, 3.5};
     std::vector<std::vector<float>> CostToGoMatrix(data->hourlyArrivalRates.size(), std::vector<float>(ActionSpace.size(), 0.0));
-    float learningRate = 0.0025;
+    float learningRate = 0.005;
     double runningCounter = 0.0;
     double runnining_rejections = 0.0;
-    double exponentialParameter = -0.0002;
+    double exponentialParameter = -0.0003;
 
     for (int epoch = 1; epoch <= 90000; epoch++) {
         // Initialize data structures
@@ -619,9 +639,9 @@ void Environment::tuneParameters()
         timeNextCourierArrivesAtOrder = INT_MAX;
         bool selectedRandom  = false;
         float tau = 10;
-        while (currentTime < data->simulationTime*1800 || ordersAssignedToCourierButNotServed.size() > 0){
-            if (currentTime/1800 != currentHour && currentTime < 1800*data->simulationTime){
-                currentHour = currentTime/1800;
+        while (currentTime < data->simulationTime*3600 || (size_t) ordersAssignedToCourierButNotServed.size() > 0){
+            if (currentTime/3600 != currentHour && currentTime < 3600*data->simulationTime){
+                currentHour = currentTime/3600;
                 if (data->rng()/ (UINT32_MAX + 1.0) > exp(exponentialParameter * epoch) || selectedRandom == true){
                     auto minColumnIter = std::min_element(CostToGoMatrix[currentHour].begin(), CostToGoMatrix[currentHour].end());
                     int minColumn = std::distance(CostToGoMatrix[currentHour].begin(), minColumnIter);
@@ -634,8 +654,8 @@ void Environment::tuneParameters()
                     actionsPerHour[currentHour] = picked_number;
                 }
             }
-            // if (currentTime/1800 != currentHour && currentTime < 1800*data->simulationTime){
-            //     currentHour = currentTime/1800; 
+            // if (currentTime/3600 != currentHour && currentTime < 3600*data->simulationTime){
+            //     currentHour = currentTime/3600; 
             //     std::vector<float> boltzmannVector = softmax(CostToGoMatrix[currentHour], tau);
             //     int picked_number = sampleFromProbabilities(boltzmannVector);
             //     currentParameter = ActionSpace[picked_number];
@@ -644,12 +664,12 @@ void Environment::tuneParameters()
 
 
             // Keep track of current time
-            if (counter == orderTimes.size()-1){
+            if ((size_t) counter == orderTimes.size()-1){
                 currentTime = timeNextCourierArrivesAtOrder;
             }else{
                 currentTime = std::min(timeCustomerArrives + orderTimes[counter], timeNextCourierArrivesAtOrder);
             }
-            if (timeCustomerArrives + orderTimes[counter] < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*1800  && counter<orderTimes.size()-1){
+            if (timeCustomerArrives + orderTimes[counter] < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*3600  && (size_t) counter < orderTimes.size()-1){
                 timeCustomerArrives += orderTimes[counter];
                 currentTime = timeCustomerArrives;
                 counter += 1;
@@ -682,9 +702,9 @@ void Environment::tuneParameters()
             writeOrderStatsToClients();
         }else{
             int sum;
-            for (int hour = 0; hour<rejectionsPerHour.size(); hour++){
-                sum = std::accumulate(rejectionsPerHour.begin() + hour, rejectionsPerHour.end(), 0);
-                //sum = rejectionsPerHour[hour];
+            for (size_t hour = 0; hour < rejectionsPerHour.size(); hour++){
+                //sum = std::accumulate(rejectionsPerHour.begin() + hour, rejectionsPerHour.end(), 0);
+                sum = rejectionsPerHour[hour];
                 CostToGoMatrix[hour][actionsPerHour[hour]] = (1-learningRate)*CostToGoMatrix[hour][actionsPerHour[hour]] + learningRate*sum;
             }
             tau = std::max((float)0, tau - (float)0.0001);
@@ -708,6 +728,8 @@ void Environment::simulate(char *argv[])
         basePolicy(0);
     }else if(std::string(argv[3])== "reassignment"){
         basePolicy(1);
+    }else if (std::string(argv[3])=="staticRebalancing"){
+        basePolicy(2);
     }else if(std::string(argv[3])== "tuneParameters"){
         tuneParameters();
     }else{

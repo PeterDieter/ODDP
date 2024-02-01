@@ -16,6 +16,7 @@
 struct Courier;
 struct Picker;
 struct Order;
+struct Quadrant;
 
 // Structure of a Client, including its index, position
 struct Client
@@ -25,6 +26,10 @@ struct Client
 	double lon;							// Longitude 
 	std::vector< int> nbOrders;			// the number of times the client ordered per hour
 	std::vector< int> nbRejected;			// the number of time the client's order was rejected per hour
+	long double averageWaitingTime; // Average time to serve orders of the client
+	int visitedCount;				// Number of times the client has been visited during the simulation 
+	Quadrant* inQuadrant;			// pointer to quadrant in which the client is located
+	bool reached;					// indicator if client can be reached in time (quadrant assignment can make this impossible, or due to the removal of quadrants)
 };
 
 // Structure of a Warehouse, including its index, position
@@ -37,6 +42,7 @@ struct Warehouse
 	std::vector< Picker*> pickersAssigned; 				// vector of pointers to pickers which are assigned to the warehouse
 	std::vector< Order*> ordersNotAssignedToCourier;	// vector to orders that are assigned to the warehouse, but not to a courier yet
 	std::vector< Order*> ordersAssigned;				// vector to orders that are assigned to the warehouse
+	std::vector< Quadrant*> assignedQuadrants; 			// vector of pointers to quadrants which are assigned to the warehouse
 	int currentNbCustomers;								// Current number of customers in the system
 	double lat;											// Latitude
 	double lon;											// Longitude 
@@ -90,6 +96,49 @@ struct Picker
 	Warehouse* assignedToWarehouse;			// Warehouse where the picker is located to
 };
 
+// Structure of a Client, including its index, position, and quadrant
+struct Grid
+{
+	double latSW;				// Latitude south West
+	double lonSW;				// Longitude south west
+	double latNE;				// Latitude north east
+	double lonNE;				// Longitude north east
+	double stepLon;				// stepsize longitude
+	double stepLat;				// stepsize latitude
+};
+
+// Structure of a quadrant, including its index, clients and possibly position?
+struct Quadrant
+{
+	// count objects for automatic enumeration in default constructor
+	static int num_quad;
+	// constructors
+	Quadrant();
+	Quadrant(int,double,double,double,double,Warehouse*,std::vector< Client*>);
+	// destructor
+	~Quadrant();
+	
+	int quadrantID;				// ID of the quadrant
+	double latSW;				// Latitude south West
+	double lonSW;				// Longitude south west
+	double latNE;				// Latitude north east
+	double lonNE;				// Longitude north east
+
+	double meanWaitingTime; 	// Mean waiting time over simulation chain
+	double maxWaitingTime; 	// Mean waiting time over simulation chain
+	
+	Warehouse* assignedToWarehouse;						// Pointer to warehouse the quadrant is assigned to
+	std::vector< Client*> clientsInQuadrant; 	// vector of pointers to clients which are in the quadrant;
+	bool contains_client;											// is true if at least one client is in the quadrant
+	bool is_served;														// is true if customers in this quadrant are served
+	std::vector< Quadrant*> neighbours;				// Pointer to quadrants to the North/East/South/West
+	int num_active_neighbours;								// counts active neighbours
+};
+
+
+
+
+
 class Data
 {
 public:
@@ -98,6 +147,7 @@ public:
 	int nbClients;							// Number of clients
 	int nbWarehouses;						// Number of warehouses
 	int nbCouriers;							// Total Number of couriers
+	int nbQuadrants;						// Number of quadrants
 	int nbPickers;							// Total number of pickers
 	int maxWaiting;							// Time in which order must be served (hard constraint). In seconds!
 	std::vector<int> hourlyArrivalRates;	// Vector of time dependent arrival times in seconds.
@@ -106,6 +156,8 @@ public:
 	int simulationTime;						// The time in hours the system is simulated
 	std::vector<Client> paramClients;		// Vector containing information on each client
 	std::vector<Warehouse> paramWarehouses;	// Vector containing information on each warehouse
+	std::vector<Quadrant> paramQuadrants;	// Vector containing information on each quadrant
+	Grid grid;								// Information on grid
 	Matrix travelTime;						// Distance matrix from clients to warehouses (symetric)
 	XorShift128 rng;						// Fast random number generator
 };
