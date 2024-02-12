@@ -11,6 +11,17 @@ from shapely.geometry import Point
 def eucl_dist(x1, x2, y1, y2):
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
+def getClosestQuad(point, quads):
+    bestWarehouseIdx, counter = -1, 0
+    bestDist = float('inf')
+    for quad in quads.iterrows():
+        if quad[1][5] != -1:
+            dist = eucl_dist((quad[1][1]+quad[1][3])/2, point.y, (quad[1][2]+quad[1][4])/2,point.x)
+            if dist < bestDist:
+                bestDist = dist
+                bestWarehouseIdx = quad[1][5]
+    return bestWarehouseIdx
+
 def getClosestWarehouse(warehouses, point):
     bestWarehouseIdx, counter = -1, 0
     bestDist = float('inf')
@@ -48,7 +59,9 @@ def plotData(clients, warehouses, quads, polygon, colorEmpty, plotCustomers):
     counter = 0
     for name, group2 in groupedQ2:
         allLat, allLon = [], []
-        
+        if (group2.head(1).reset_index(drop=True)["WarehouseID"][0] == -1):
+            counter += 1
+            continue
         for index, row in group2.iterrows():
             allLon.extend((row["LonSW"],row["LonNE"],row["LonNE"],row["LonSW"], None)),
             allLat.extend((row["LatSW"],row["LatSW"],row["LatNE"],row["LatNE"], None)),
@@ -61,6 +74,7 @@ def plotData(clients, warehouses, quads, polygon, colorEmpty, plotCustomers):
                 marker = dict(size = 0, color = list(colors)[counter]),
             ))
         counter += 1
+
 
     if plotCustomers:
         fig.add_trace(go.Scattermapbox(

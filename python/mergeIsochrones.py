@@ -10,13 +10,13 @@ from area import area
 
 polygons = []
 for i in range(10):
-    with open('data/warehouseIsochrones/isochroneWarehouse_900s_' + str(i) + '.json', 'r') as json_data:
+    with open('data/warehouseIsochrones/isochroneWarehouse_1200s_' + str(i) + '.json', 'r') as json_data:
         d = json.load(json_data)
         polygons.append(shape(d['geometry']))
 
-boundary15 = Polygon(gpd.GeoSeries(unary_union(polygons))[0])
-gpd.GeoSeries(unary_union(polygons)).to_file("data/Polygon_900s",driver='ESRI Shapefile')
-boundaryGeoJson15 = gpd.GeoSeries([boundary15]).__geo_interface__
+boundary20 = Polygon(gpd.GeoSeries(unary_union(polygons))[0])
+gpd.GeoSeries(unary_union(polygons)).to_file("data/Polygon_1200s",driver='ESRI Shapefile')
+boundaryGeoJson20 = gpd.GeoSeries([boundary20]).__geo_interface__
 
 polygons = []
 for i in range(10):
@@ -28,26 +28,30 @@ boundary10 = Polygon(gpd.GeoSeries(unary_union(polygons))[0])
 boundaryGeoJson10 = gpd.GeoSeries([boundary10]).__geo_interface__
 
 print("Area of the 10 minute polygon in sqm: ", round(area(boundaryGeoJson10['features'][0]['geometry'])))
-print("Area of the 15 minute polygon in sqm: ", round(area(boundaryGeoJson15['features'][0]['geometry'])))
+print("Area of the 20 minute polygon in sqm: ", round(area(boundaryGeoJson20['features'][0]['geometry'])))
 
 
 
 with open('data/getirStores.json') as fp:
     getirStores = json.load(fp)
-Stopls = pd.read_csv("data/stopData_Chicago.csv", header=None, names=['Latitude', 'Longitude', 'PackageVolume', 'Date']) 
+#Stopls = pd.read_csv("data/stopData_Chicago.csv", 
+# header=None, names=['Latitude', 'Longitude', 'PackageVolume', 'Date']) 
+Stopls = pd.read_csv("data/generated_customers.csv") 
 
-df = pd.DataFrame(Stopls, columns =['Latitude', 'Longitude', 'PackageVolume', 'Date'])
+#df = pd.DataFrame(Stopls, columns =['Latitude', 'Longitude', 'PackageVolume', 'Date'])
+df = pd.DataFrame(Stopls, columns =['Longitude', 'Latitude', 'ZipCode'])
 
 df['inRange15'], df['inRange10'] = 0, 0
 for index, row in df.iterrows():
-    if (boundary15.contains(Point(row['Longitude'], row['Latitude']))):
+    if (boundary20.contains(Point(row['Longitude'], row['Latitude']))):
         df.loc[index,'inRange15'] = 1
         if (boundary10.contains(Point(row['Longitude'], row['Latitude']))):
             df.loc[index,'inRange10'] = 1
 
 df = df.drop(df[df.inRange15 < 1].index)
 df = df[['Latitude', 'Longitude']]
-#df.to_csv('data/stopData15Minutes.csv', header=True)
+print(len(df))
+df.to_csv('data/stopData20MinutesGenerated.csv', header=True)
 
 fig = go.Figure(go.Scattermapbox(lat=df.Latitude, lon=df.Longitude))
 
@@ -73,7 +77,7 @@ fig.update_layout(
                     "line": {"width": 3.5},
                 },
                 {
-                    "source": boundaryGeoJson15,
+                    "source": boundaryGeoJson20,
                     "type": "line",
                     "color": "red",
                     "line": {"width": 3.5},
@@ -83,7 +87,7 @@ fig.update_layout(
         }
     )
 
-fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lon=-87.7493, mapbox_center_lat=41.958, mapbox_zoom=9)
+fig.update_layout(mapbox_style="carto-positron", mapbox_center_lon=-87.7493, mapbox_center_lat=41.958, mapbox_zoom=9)
 fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
 fig.show()
 

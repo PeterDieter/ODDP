@@ -59,11 +59,11 @@ Data::Data(char * argv[])
 	meanServiceTimeAtClient = 60;
 	paramClients = std::vector<Client>(40000); // 40000 is an upper limit, can be increase ofc
 	paramWarehouses = std::vector<Warehouse>(30); // 30 is an upper limit, can be increased ofc
-	//hourlyArrivalRates = {23,24,17,14,13,12,15,18,21,24,24,230,240,17,14,13,12,15,18,21,24,24};
 	//hourlyArrivalRates = {40,38,34,30,26,23,21,22,23,24,24,20,18,19,16,14,15,16,19,22,23};
-	hourlyArrivalRates = {25,25,25,25,25,25,25,17,17,17,17,17};
-	//hourlyArrivalRates = {24,25,24,16,19,24,23,24,14,15,18,24,24};
-	//hourlyArrivalRates = {23,21,21,21,20,19,18,14,13,17,18,21,21,21};
+	//hourlyArrivalRates = {25,25,25,25,25,25,25,25,25,25,25};
+	//hourlyArrivalRates = {17,17,17,17,17,17,17,17,17,17,17};
+	//hourlyArrivalRates = {24,25,24,16,19,24,23,15,11,19,18,24,24};
+	hourlyArrivalRates = {33,32,29,29,28,26,25,23,21,17,20,25,28,30};
 	std::string content, content2, content3;
 	std::ifstream inputFile(argv[1]);
 	if (!inputFile) throw std::runtime_error("Could not find file instance");

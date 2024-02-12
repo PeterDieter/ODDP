@@ -52,8 +52,8 @@ def getDistances(clients, warehouses, fileToSave):
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("data/stopData15Minutes.csv", header=0) 
+    df = pd.read_csv("data/stopData20MinutesGenerated.csv", header=0) 
     with open('data/getirStores.json') as fp:
         getirStores = json.load(fp)
 
-    getDistances(df, getirStores, "allDurations15.csv")
+    getDistances(df, getirStores, "allDurationsGenerated.csv")

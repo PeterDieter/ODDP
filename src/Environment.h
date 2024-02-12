@@ -62,7 +62,7 @@ private:
 
 	// Function that checks if order can be assigned to warehouse without hurting the time window
 	bool isFeasible(Order* newOrder, Warehouse* warehouse);
-	bool customerChoice(Order* newOrder, Warehouse* warehouse);
+	//bool customerChoice(Order* newOrder, Warehouse* warehouse);
 
 	// Functions that assigns order to a warehouse, picker and courier, respectively
 	void chooseClosestWarehouseForOrder(Order* newOrder);
@@ -81,6 +81,9 @@ private:
 
 	// Function that adds order to a vector of orders based on the (expected) arrival time
 	void AddOrderToVector(std::vector<Order*> & V, Order* orderToAdd);
+
+	double getTotalWaitingTime();
+	double getTotalDelays();
 
 	// Function that returns the fastest available picker at a warehouse
 	Picker* getFastestAvailablePicker(Warehouse* warehouse);

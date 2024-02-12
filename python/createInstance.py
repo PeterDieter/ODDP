@@ -19,7 +19,7 @@ def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, 
         None 
     """
     
-    df = pd.read_csv("data/allDurations15.csv", header=0) 
+    df = pd.read_csv("data/allDurationsGenerated.csv", header=0) 
     df = df.to_numpy()
     random.seed(422)
     rndIdxs = random.sample(range(len(df)), round(len(df)*0.75))
@@ -45,7 +45,7 @@ def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, 
     matrix = np.delete(matrix, notInLimit, axis=0)
 
      # Grid Stuff
-    points = gpd.read_file('data/Polygon_900s/Polygon_900s.shp')
+    points = gpd.read_file('data/Polygon_1200s/Polygon_1200s.shp')
     xmin, ymin, xmax, ymax = points.total_bounds
 
     # Create corners of rectangle to be transformed to a grid
@@ -199,5 +199,5 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
 
 
 if __name__ == "__main__":
-    create_instance(fileName = "instance_train", limit=900, couriersPerWarehouse=10, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=60)
+    create_instance(fileName = "instance_zip", limit=1200, couriersPerWarehouse=10, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=60, gridStepSize=500)
     create_grid_instance(fileName = "instance_grid", couriersPerWarehouse=8, pickersPerWarehouse=4, meanComissionTime=180, meanServiceTimeAtClient=60)

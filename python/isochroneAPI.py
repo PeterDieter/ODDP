@@ -3,6 +3,7 @@ import json
 import os
 from dotenv import load_dotenv
 
+load_dotenv()
 
 def downLoadIsochrones(warehouses):
     """Save isochrones to file with openrouteservice API
@@ -14,13 +15,14 @@ def downLoadIsochrones(warehouses):
 
 
     coord =[[val.get('longitude'), val.get('latitude')] for val in warehouses.values()]
-    body = {"locations":coord[5:],"range":[600, 900]}
+    body = {"locations":coord[5:],"range":[600, 1200]}
 
     headers = {
         'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
         'Authorization': os.getenv('OPEN_ROUTE_SERVICE_KEY'),
         'Content-Type': 'application/json; charset=utf-8'
     }
+    print(headers)
     call = requests.post('https://api.openrouteservice.org/v2/isochrones/cycling-electric', json=body, headers=headers)
 
     print(call.status_code, call.reason)
@@ -30,10 +32,10 @@ def downLoadIsochrones(warehouses):
     counter = 5
     for i in range(len(call.json()['features'])):
         if switch:
-            with open('dadta/isochroneWarehouse'+ '_600s_' + str(counter) + '.json', 'w') as f:
+            with open('data/warehouseIsochrones/isochroneWarehouse'+ '_600s_' + str(counter) + '.json', 'w') as f:
                 json.dump(call.json()['features'][i], f)
         else:
-            with open('datda/isochroneWarehouse'+ '_900s_' + str(counter) + '.json', 'w') as f:
+            with open('data/warehouseIsochrones/isochroneWarehouse'+ '_1200s_' + str(counter) + '.json', 'w') as f:
                 json.dump(call.json()['features'][i], f)
             counter += 1
         switch = not switch

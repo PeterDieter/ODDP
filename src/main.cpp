@@ -9,19 +9,14 @@
 
 int main(int argc, char * argv[])
 {
-	int verbose = 1;				// output level
-	double eps  = 1e-6;				// precision epsilon
-	double travel_cap = 900;		// cap for reachability (seconds)
-  int balancing = 1;				// balancing constraitns
-
-
   // Reading the data file and initializing some data structures
   std::cout << "----- READING DATA SET " << argv[1] << " -----" << std::endl;
   Data data(argv);
   std::cout << "----- Instance with " << data.nbClients << " Clients, " << data.nbWarehouses << " Warehouses -----"<< std::endl;
   
-  if (std::string(argv[3])=="staticRebalancing"){
-    WQAssign wqassign(&data, travel_cap, balancing, eps, true);
+  // In case of static Rebalancing, we use Gurobi to create such a static assignment
+  if (std::string(argv[3])=="staticAssignment"){
+    WQAssign wqassign(&data, 900, 1, 1e-6, false);
     int init_mod = wqassign.init();
   }
 
