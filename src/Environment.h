@@ -51,8 +51,7 @@ private:
 	int latestArrivalTime;
 
 	// In this method, we reassign orders to other warehouses
-	void basePolicy(int policy);
-	void tuneParameters();
+	void simulation(int policy);
 
 	// In this method we initialize the rest of the Data, such as warehouses, couriers, etc.
 	void initialize();
