@@ -307,10 +307,18 @@ Courier* Environment::getFastestAvailableCourier(Warehouse* war){
     return fastestAvailableCourier;
 }
 
-void printVector(std::vector<Order*> & O) {
+void printOrders(std::vector<Order*> & O) {
     std::cout << "[ ";
     for (Order* element : O) {
         std::cout << element->arrivalTime << " ";
+    }
+    std::cout << "]" << std::endl;
+}
+
+void printVector(std::vector<int> vec) {
+    std::cout << "[ ";
+    for (int element : vec) {
+        std::cout << element << " ";
     }
     std::cout << "]" << std::endl;
 }
@@ -461,17 +469,25 @@ void Environment::chooseWarehouseForOrderReassignment(Order* newOrder, float pen
     int warehouseCounter = 0;
     std::vector<int> indices(data->nbWarehouses);
     std::vector< int> costs(data->nbWarehouses, INT16_MAX);
+    std::vector< int> costs2(data->nbWarehouses, INT16_MAX);
     for(Warehouse* w: warehouses){
         int waitingForPickerTime = std::max(0,getFastestAvailablePicker(w)->timeWhenAvailable -currentTime);
         int waitingForCourierTime = std::max(0,getFastestAvailableCourier(w)->timeWhenAvailable-(currentTime+ newOrder->timeToComission + waitingForPickerTime));
         costs[warehouseCounter] = distancesToWarehouses[warehouseCounter]*(1-penaltyParameter) + penaltyParameter*(waitingForPickerTime + waitingForCourierTime);
+        costs2[warehouseCounter] = waitingForPickerTime;
         indices[warehouseCounter] = warehouseCounter;
         warehouseCounter += 1;
     }
     std::sort(indices.begin(), indices.end(),[&](int A, int B) -> bool {return costs[A] < costs[B];});
+    
+    if (costs2[indices[0]]>data->maxWaiting){
+        std::sort(indices.begin(), indices.end(),[&](int A, int B) -> bool {return costs2[A] < costs2[B];});
+        newOrder->assignedWarehouse = warehouses[indices[0]];
+    }else{
+        //std::cout<<costs2[indices[0]]<<std::endl;
+        newOrder->assignedWarehouse = warehouses[indices[0]];
+    }
 
-    newOrder->assignedWarehouse = warehouses[indices[0]];
-    newOrder->accepted = true;
 
 }
 
@@ -515,7 +531,7 @@ void Environment::simulation(int policy)
                 if (policy==0){
                     chooseClosestWarehouseForOrder(newOrder);
                 }else if(policy == 1){
-                    chooseWarehouseForOrderReassignment(newOrder, 0.4);
+                    chooseWarehouseForOrderReassignment(newOrder, 0.7);
                 }else if(policy == 2){
                     chooseWarehouseBasedOnQuadrant(newOrder);
                 }
