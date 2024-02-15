@@ -25,7 +25,7 @@ struct Client
 	double lat;							// Latitude
 	double lon;							// Longitude 
 	std::vector< int> nbOrders;			// the number of times the client ordered per hour
-	std::vector< int> nbRejected;			// the number of time the client's order was rejected per hour
+	std::vector< int> waitingTimes;		// the waiting time per hour
 	long double averageWaitingTime; // Average time to serve orders of the client
 	int visitedCount;				// Number of times the client has been visited during the simulation 
 	Quadrant* inQuadrant;			// pointer to quadrant in which the client is located
@@ -54,15 +54,15 @@ struct Order
 {
 	int orderID;					// ID of the warehouse
 	Client* client; 				// pointer to couriers which are currently available at the warehouse
-	bool accepted;					// states if the order has been accepted or not
 	Warehouse* assignedWarehouse; 	// pointer to warehouse the order is assigned to
 	Courier* assignedCourier;		// Courier assigned to order
 	Picker* assignedPicker;			// Picker assigned to order
 	bool assignedToNearest;			// States if an  order was assigned to its nearest warehouse
 	int orderTime;					// Time the order arrives in the system
-	int timeToComission;			// Time it takes to comission the order
+	int commissionTime;				// Time it takes to comission the order
 	int serviceTimeAtClient;		// Time it takes to serve the client at the door
 	int donePickingTime;			// Time when picking the order is done
+	int timeCourierLeavesToOrder;	// Time the courier leaves either depot or other customer to drive to order
 	int arrivalTime;				// time the courier arrives at the client, i.e., the client is served
 };
 
@@ -84,7 +84,7 @@ struct Courier
 {
 	int courierID;							// ID of the courier
 	int timeWhenAvailable; 					// Gives the time when the courier is available again, i.e., he is (back) at a warehouse
-	Order* assignedToOrder;					// pointer to order to which the courier is assigned to
+	std::vector<std::vector <Order*>> assignedToOrders;	// pointer to order to which the courier is assigned to
 	Warehouse* assignedToWarehouse;			// Warehouse where the courier is located or where he is heading to
 };
 

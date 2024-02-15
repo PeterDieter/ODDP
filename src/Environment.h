@@ -47,8 +47,6 @@ private:
 	int timeCustomerArrives;
 	int timeNextCourierArrivesAtOrder;
 	int totalWaitingTime;
-	int highestWaitingTimeOfAnOrder;
-	int latestArrivalTime;
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);
@@ -59,21 +57,17 @@ private:
 	// Function to initialize the values of an order
 	void initOrder(int currentTime, int id, Order* o);
 
-	// Function that checks if order can be assigned to warehouse without hurting the time window
-	bool isFeasible(Order* newOrder, Warehouse* warehouse);
-	//bool customerChoice(Order* newOrder, Warehouse* warehouse);
-
 	// Functions that assigns order to a warehouse, picker and courier, respectively
 	void chooseClosestWarehouseForOrder(Order* newOrder);
 	void chooseWarehouseBasedOnQuadrant(Order* newOrder);
 	void choosePickerForOrder(Order* newOrder);
-	void chooseCourierForOrder(Order* newOrder);
+	void chooseCourierForOrder(Order* newOrder, bool bundling);
 
 	// Choose warehouse for an order, based on the Lower bound policy
-	void chooseWarehouseForOrderReassignment(Order* newOrder, float penaltyParameter);
+	void chooseWarehouseForOrderReassignment(Order* newOrder, float penaltyParameter, bool bundle);
 
 	// Function that assigns a courier to the closest warehouse
-	void chooseClosestWarehouseForCourier(Courier* courier);
+	void chooseWarehouseForCourier(Courier* courier);
 
 	// Function that deletes order from ordersNotServed vector
 	void RemoveOrderFromVector(std::vector<Order*> & V, Order* orderToDelete);
@@ -89,24 +83,26 @@ private:
 
 	// Function that returns the fastest available courier assigned to a warehouse
 	Courier* getFastestAvailableCourier(Warehouse* warehouse);
+	Courier* getCourierBundling(Order* newOrder, Warehouse* warehouse);
+	double insertOrderToCourierCosts(Order* newOrder, Courier* courier, bool bundle);
+	double getLeavingTimeCourier(Courier* courier);
+	int costsToWarehouse(Order* newOrder, Warehouse* war, bool bundle);
 
 	// Function that updates the order that will be served next
 	void updateOrderBeingServedNext();
 
 	// Function that saves a route to the list of routes
-	void saveRoute(int startTime, int arrivalTime, double fromLat, double fromLon, double toLat, double toLon);
 	void writeOrderStatsToClients();
 	void writeClientsStatsToFile(std::string filename);
 
 	// Functions that writes routes/orders and costs to file
-	void writeRoutesAndOrdersToFile(std::string fileNameRoutes, std::string fileNameOrders);
 	void writeCostsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training);
 	void writeStatsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, std::vector<float> averageWaitingTime, std::vector<float> maxWaitingTime);
 	void writeMatrixToFile(std::vector<std::vector<double>> matrix, std::string filename);
+	void writeCourierRoutesToFile(std::string fileNameRoutes, std::string fileNameOrders);
 	
 	// Function to draw an inter arrival time based on rate specified in data
 	int drawFromExponentialDistribution(double lambda);
-	int sampleFromProbabilities(const std::vector<float>& probabilities);
 
 };
 

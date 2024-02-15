@@ -12,6 +12,7 @@
 #include "Matrix.h"
 #include "Environment.h"
 
+#define pi 3.14159265358979323846
 
 
 Environment::Environment(Data* data) : data(data)
@@ -26,8 +27,6 @@ void Environment::initialize()
     int courierCounter = 0;
     int pickerCounter = 0;
     totalWaitingTime = 0;
-    highestWaitingTimeOfAnOrder = 0;
-    latestArrivalTime = 0;
     nbOrdersServed = 0;
     rejectCount = 0;
     nextOrderBeingServed = nullptr;
@@ -69,7 +68,6 @@ void Environment::initialize()
         newWarehouse->initialNbCouriers = data->paramWarehouses[wID].initialNbCouriers;
         newWarehouse->initialNbPickers = data->paramWarehouses[wID].initialNbPickers;
         newWarehouse->currentNbCustomers = 0;
-        newWarehouse->ordersNotAssignedToCourier = std::vector<Order*>(0);
         newWarehouse->ordersAssigned = std::vector<Order*>(0);
 
         for (int cID = 0; cID < newWarehouse->initialNbCouriers; cID++)
@@ -77,7 +75,8 @@ void Environment::initialize()
             Courier* newCourier = new Courier;
             newCourier->courierID = courierCounter;
             newCourier->assignedToWarehouse = warehouses[wID];
-            newCourier->assignedToOrder = nullptr;
+            newCourier->assignedToOrders.clear();
+            newCourier->assignedToOrders.resize(0);
             newCourier->timeWhenAvailable = 0;
             couriers.push_back(newCourier);
             newWarehouse->couriersAssigned.push_back(newCourier);
@@ -117,14 +116,14 @@ void Environment::initialize()
 void Environment::initOrder(int currentTime, int id, Order* o)
 {
     o->orderID = id;
-    o->timeToComission = timesToComission[o->orderID]; // Follows expoential distribution
+    o->commissionTime = timesToComission[o->orderID]; // Follows expoential distribution
     o->assignedCourier = nullptr;
     o->assignedPicker = nullptr;
     o->assignedWarehouse = nullptr;
     o->client = &data->paramClients[clientsVector[o->orderID]];
     o->orderTime = currentTime;
     o->arrivalTime = 0;
-    o->serviceTimeAtClient = timesToServe[o->orderID]; // Follows expoential distribution
+    o->serviceTimeAtClient = 120;//timesToServe[o->orderID]; // Follows expoential distribution
 }
 
 int Environment::drawFromExponentialDistribution(double lambda)
@@ -140,51 +139,49 @@ int factorial(int n)
   return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n;
 }
 
-void Environment::saveRoute(int startTime, int arrivalTime, double fromLat, double fromLon, double toLat, double toLon){
-    Route* route = new Route;
-    route->fromLat = fromLat; route->fromLon = fromLon; route->toLat = toLat; route->tolon = toLon;
-    route->startTime = startTime;
-    route->arrivalTime = arrivalTime;
-    routes.push_back(route);
+double toRad(double degree) {
+    return degree/180 * pi;
 }
 
-void Environment::writeRoutesAndOrdersToFile(std::string fileNameRoutes, std::string fileNameOrders){
-	std::cout << "----- WRITING Routes IN : " << fileNameRoutes << " and Orders IN : " << fileNameOrders << std::endl;
+void printOrders(std::vector<Order*> & O) {
+    std::cout << "[ ";
+    for (Order* element : O) {
+        std::cout <<element->orderTime<<" "<<element->donePickingTime<<" "<<element->timeCourierLeavesToOrder<<" "<<element->arrivalTime << " ";
+    }
+    std::cout << "]" << std::endl;
+}
+
+void Environment::writeCourierRoutesToFile(std::string fileNameRoutes, std::string fileNameOrders){
+    std::cout << "----- WRITING Routes IN : " << fileNameRoutes << " and Orders IN : " << fileNameOrders << std::endl;
 	std::ofstream myfile(fileNameRoutes);
-	if (myfile.is_open())
-	{
-		for (auto route : routes)
-		{
-            // Here we print the order of customers that we visit 
-            myfile << route->startTime << " " << route->arrivalTime << " " << route->fromLat << " " << route->fromLon << " " << route->toLat << " " << route->tolon;
-            myfile << std::endl;
-		}
-	}
-	else std::cout << "----- IMPOSSIBLE TO OPEN: " << fileNameRoutes << std::endl;
-    // Now the orders
     std::ofstream myfile2(fileNameOrders);
-	if (myfile2.is_open())
+	if (myfile.is_open() && myfile2.is_open())
 	{
-		for (auto order : orders)
-		{
-            if (order->accepted){
-                if (order->arrivalTime == -1){
-                    // Here we print the order of customers that we visit 
-                    myfile2 << order->orderTime << " " << latestArrivalTime << " " << order->client->lat << " " << order->client->lon << " " << 1;
+        for(Courier* c: couriers){
+            for(int route = 0; route<c->assignedToOrders.size(); route++){
+                int counter = 0;
+                for(Order* o : c->assignedToOrders[route]){
+                    myfile2 << o->orderTime << " " << o->arrivalTime << " " << o->client->lat << " " << o->client->lon << " " << 1;
                     myfile2 << std::endl;
-                }else{
-                    myfile2 << order->orderTime << " " << order->arrivalTime << " " << order->client->lat << " " << order->client->lon << " " << 1;
-                    myfile2 << std::endl;
+                    if(counter == 0){
+                        myfile << c->assignedToOrders[route][0]->timeCourierLeavesToOrder << " " << c->assignedToOrders[route][0]->arrivalTime << " " << c->assignedToOrders[route][0]->arrivalTime + c->assignedToOrders[route][0]->serviceTimeAtClient  << " " << c->assignedToWarehouse->lat << " " << c->assignedToWarehouse->lon << " " << c->assignedToOrders[route][0]->client->lat  << " " << c->assignedToOrders[route][0]->client->lon;
+                        myfile << std::endl;
+                    }else{
+                        myfile << c->assignedToOrders[route][counter]->timeCourierLeavesToOrder << " " << c->assignedToOrders[route][counter]->arrivalTime << " " << c->assignedToOrders[route][counter]->arrivalTime + c->assignedToOrders[route][counter]->serviceTimeAtClient << " " << c->assignedToOrders[route][counter-1]->client->lat << " " << c->assignedToOrders[route][counter-1]->client->lon << " " << c->assignedToOrders[route][counter]->client->lat  << " " << c->assignedToOrders[route][counter]->client->lon;
+                        myfile << std::endl;
+                    }
+                    counter += 1;
                 }
-            }else{
-                myfile2 << order->orderTime << " " << order->orderTime + 180<< " " << order->client->lat << " " << order->client->lon << " " << 0;
-                myfile2 << std::endl;
-            }
-		}
-	}
-	else std::cout << "----- IMPOSSIBLE TO OPEN: " << fileNameOrders << std::endl;
-}
 
+                if (c->assignedToOrders[route].size() > 0){
+                    int backAtDepotTime = c->assignedToOrders[route].back()->arrivalTime + c->assignedToOrders[route].back()->serviceTimeAtClient + data->travelTime.get(c->assignedToOrders[route].back()->client->clientID, c->assignedToWarehouse->wareID);
+                    myfile << c->assignedToOrders[route].back()->arrivalTime + c->assignedToOrders[route].back()->serviceTimeAtClient << " " << backAtDepotTime << " " << backAtDepotTime << " " << c->assignedToOrders[route].back()->client->lat  << " " << c->assignedToOrders[route].back()->client->lon << " " << c->assignedToWarehouse->lat << " " << c->assignedToWarehouse->lon;
+                    myfile << std::endl;
+                }
+            }
+        }
+    }else std::cout << "----- Cannot Open one of the files -----" << std::endl;
+}
 
 void Environment::writeCostsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training){
     std::string fileName;
@@ -307,14 +304,6 @@ Courier* Environment::getFastestAvailableCourier(Warehouse* war){
     return fastestAvailableCourier;
 }
 
-void printOrders(std::vector<Order*> & O) {
-    std::cout << "[ ";
-    for (Order* element : O) {
-        std::cout << element->arrivalTime << " ";
-    }
-    std::cout << "]" << std::endl;
-}
-
 void printVector(std::vector<int> vec) {
     std::cout << "[ ";
     for (int element : vec) {
@@ -348,7 +337,7 @@ void Environment::writeOrderStatsToClients(){
         int hour = o->orderTime/1800;
         o->client->nbOrders[hour] += 1;
         if (o->arrivalTime-o->orderTime > data->maxWaiting){
-            o->client->nbRejected[hour] += 1; // o->arrivalTime-o->orderTime - data->maxWaiting;
+            o->client->waitingTimes[hour] += 1; // o->arrivalTime-o->orderTime - data->maxWaiting;
         }
     }
 }
@@ -362,7 +351,7 @@ void Environment::writeClientsStatsToFile(std::string filename){
 		{
             for (int hour = 0; hour<data->simulationTime; hour++){
                 // Here we print the order of customers that we visit 
-                myfile << client.lat << " " << client.lon << " " << hour << " " << client.nbOrders[hour] << " " << client.nbRejected[hour];
+                myfile << client.lat << " " << client.lon << " " << hour << " " << client.nbOrders[hour] << " " << client.waitingTimes[hour];
                 myfile << std::endl;
             }
 
@@ -372,18 +361,24 @@ void Environment::writeClientsStatsToFile(std::string filename){
     
 }
 
-
-bool Environment::isFeasible(Order* newOrder, Warehouse* warehouse){
-    std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
-    int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
-    int fastestPickerTimeAvailable = getFastestAvailablePicker(warehouses[indexClosestWarehouse])->timeWhenAvailable;
-    int waitingForCourierTime = getFastestAvailableCourier(warehouses[indexClosestWarehouse])->timeWhenAvailable-(currentTime + newOrder->timeToComission + std::max(0,fastestPickerTimeAvailable-currentTime));
-    int waitingForPickerTime = fastestPickerTimeAvailable-currentTime;
-
-    if (distancesToWarehouses[indexClosestWarehouse] + newOrder->timeToComission + std::max(0,waitingForPickerTime) + std::max(0,waitingForCourierTime) <= data->maxWaiting){
-        return true;
+double Environment::getTotalWaitingTime(){
+    double sum = 0;
+    for (Order* o: orders){
+        if (o->arrivalTime-o->orderTime > data->maxWaiting){
+            sum += o->arrivalTime-o->orderTime-data->maxWaiting;
+        }
     }
-    return false;
+    return sum/ orders.size();
+}
+
+double Environment::getTotalDelays(){
+    double sum = 0;
+    for (Order* o: orders){
+        if (o->arrivalTime-o->orderTime > data->maxWaiting){
+            sum += 1;
+        }
+    }
+    return sum/ orders.size();
 }
 
 void Environment::choosePickerForOrder(Order* newOrder) 
@@ -391,57 +386,118 @@ void Environment::choosePickerForOrder(Order* newOrder)
     // We choose the picker who is available fastest
     newOrder->assignedPicker = getFastestAvailablePicker(newOrder->assignedWarehouse);
     // We set the time the picker is available again to the maximum of either the previous availability time or the current time, plus the time needed to comission the order
-    newOrder->assignedPicker->timeWhenAvailable = std::max(newOrder->assignedPicker->timeWhenAvailable, currentTime) + newOrder->timeToComission;
+    newOrder->assignedPicker->timeWhenAvailable = std::max(newOrder->assignedPicker->timeWhenAvailable, currentTime) + newOrder->commissionTime;
     newOrder->donePickingTime = newOrder->assignedPicker->timeWhenAvailable;
     newOrder->assignedWarehouse->currentNbCustomers += 1;
 }
 
-void Environment::chooseCourierForOrder(Order* newOrder)
+int calculateDistance(double lat1, double long1, double lat2, double long2) {
+    if(lat1 == lat2 && long1 == long2){
+        return 0;
+    }else{
+        double dist;
+        dist = sin(toRad(lat1)) * sin(toRad(lat2)) + cos(toRad(lat1)) * cos(toRad(lat2)) * cos(toRad(long1 - long2));
+        dist = acos(dist);
+        dist = 6371 * dist * 1000 / 5;
+        return int(dist);
+    }
+}
+
+double Environment::insertOrderToCourierCosts(Order* newOrder, Courier* courier, bool bundle){
+    if (courier->assignedToOrders.size() > 0 && bundle){
+        int numberOfRoutes = courier->assignedToOrders.size()-1;
+        if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable -currentTime) + newOrder->commissionTime){
+            Order* lastOrder = courier->assignedToOrders[courier->assignedToOrders.size()-1].back();
+            double distance = calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon);
+            return lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + distance - currentTime;
+        };
+    }
+    return std::max(courier->timeWhenAvailable, std::max(currentTime, getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable) + newOrder->commissionTime) - currentTime + 1*data->travelTime.get(newOrder->client->clientID, courier->assignedToWarehouse->wareID);
+} 
+
+Courier* Environment::getCourierBundling(Order* newOrder, Warehouse* war){
+    double costs = __DBL_MAX__;
+    double costsNew;
+    Courier* fastestAvailableCourier = war->couriersAssigned[0];
+    for (auto courier : war->couriersAssigned){
+        costsNew = insertOrderToCourierCosts(newOrder, courier, true);
+        if(costsNew < costs){
+            costs = costsNew;
+            fastestAvailableCourier = courier;
+        }
+    }
+    return fastestAvailableCourier;
+}
+
+int Environment::costsToWarehouse(Order* newOrder, Warehouse* war, bool bundle){
+    double costs = __DBL_MAX__;
+    double costsNew;
+    for (auto courier : war->couriersAssigned){
+        costsNew = insertOrderToCourierCosts(newOrder, courier, bundle);
+        if(costsNew < costs){
+            costs = costsNew;
+        }
+    }
+    return costs;
+}
+
+double Environment::getLeavingTimeCourier(Courier* courier){
+    return std::max(courier->timeWhenAvailable, courier->assignedToOrders[courier->assignedToOrders.size()-1][0]->orderTime + data->maxWaiting - data->travelTime.get(courier->assignedToOrders[courier->assignedToOrders.size()-1][0]->client->clientID, courier->assignedToWarehouse->wareID));
+}
+
+void Environment::chooseCourierForOrder(Order* newOrder, bool bundling)
 {
     // We choose the courier who is available fastest
-    newOrder->assignedCourier = getFastestAvailableCourier(newOrder->assignedWarehouse);
-    // We set the time the courier is arriving at the order to the maximum of either the current time, or the time the picker or couriers are available (comission time for picker has already been accounted for before). We then add the distance to the warehouse
-    newOrder->arrivalTime = std::max(currentTime + newOrder->timeToComission, std::max(newOrder->assignedCourier->timeWhenAvailable, newOrder->assignedPicker->timeWhenAvailable + newOrder->timeToComission)) + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
-    //std::cout<<data->maxWaiting - (newOrder->arrivalTime - newOrder->orderTime)<<std::endl;
-
+    if (bundling){
+        newOrder->assignedCourier = getCourierBundling(newOrder, newOrder->assignedWarehouse);
+        if (newOrder->assignedCourier->assignedToOrders.size() == 0){// First we check if the courier already has a route planned
+            int earliestTimeToLeaveDepot = std::max(currentTime + newOrder->commissionTime, std::max(newOrder->assignedCourier->timeWhenAvailable, getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable + newOrder->commissionTime));
+            newOrder->timeCourierLeavesToOrder = earliestTimeToLeaveDepot + 0;
+            newOrder->arrivalTime = newOrder->timeCourierLeavesToOrder + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
+            newOrder->assignedCourier->assignedToOrders.push_back({newOrder});
+        }else{ // if a route is planned, we check if we can add the order to the current route
+            int numberOfRoutes = newOrder->assignedCourier->assignedToOrders.size()-1;
+            if (newOrder->assignedCourier->assignedToOrders[numberOfRoutes][0]->timeCourierLeavesToOrder <= currentTime + std::max(0,getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable -currentTime) + newOrder->commissionTime){
+                int earliestTimeToLeaveDepot = std::max(newOrder->orderTime+data->maxWaiting-data->travelTime.get(newOrder->client->clientID, newOrder->assignedCourier->assignedToWarehouse->wareID)-data->maxWaiting, std::max(currentTime + newOrder->commissionTime, std::max(newOrder->assignedCourier->timeWhenAvailable, getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable + newOrder->commissionTime)));
+                newOrder->timeCourierLeavesToOrder = earliestTimeToLeaveDepot + 0;
+                newOrder->arrivalTime = newOrder->timeCourierLeavesToOrder + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
+                newOrder->assignedCourier->assignedToOrders.push_back({newOrder});
+            }else if(newOrder->assignedCourier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable -currentTime) + newOrder->commissionTime){
+                Order* lastOrder = newOrder->assignedCourier->assignedToOrders[numberOfRoutes].back();
+                newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon);
+                newOrder->timeCourierLeavesToOrder = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient;
+                newOrder->assignedCourier->assignedToOrders[numberOfRoutes].push_back(newOrder);
+            }
+        }
+    }else{
+        newOrder->assignedCourier = getFastestAvailableCourier(newOrder->assignedWarehouse); 
+        newOrder->assignedCourier->assignedToOrders.push_back({newOrder});
+        // We set the time the courier is arriving at the order to the maximum of either the current time, or the time the picker or couriers are available (comission time for picker has already been accounted for before). We then add the distance to the warehouse
+        newOrder->timeCourierLeavesToOrder = std::max(currentTime + newOrder->commissionTime, std::max(newOrder->assignedCourier->timeWhenAvailable, getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable + newOrder->commissionTime));
+        newOrder->arrivalTime = std::max(currentTime + newOrder->commissionTime, std::max(newOrder->assignedCourier->timeWhenAvailable, getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable + newOrder->commissionTime)) + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
+    }
     if(newOrder->arrivalTime<timeNextCourierArrivesAtOrder){
         timeNextCourierArrivesAtOrder = newOrder->arrivalTime;
         nextOrderBeingServed = newOrder;
     }
 
-    if (latestArrivalTime < newOrder->arrivalTime){
-        latestArrivalTime = newOrder->arrivalTime;
-    }
-
-    //saveRoute(std::max(currentTime, std::max(newOrder->assignedCourier->timeWhenAvailable, newOrder->assignedPicker->timeWhenAvailable)), newOrder->arrivalTime, newOrder->assignedWarehouse->lat, newOrder->assignedWarehouse->lon, newOrder->client->lat, newOrder->client->lon);
-
-    // Remove order from vector of orders that have not been assigned to a courier yet (If applicable)   
-    RemoveOrderFromVector(newOrder->assignedWarehouse->ordersNotAssignedToCourier, newOrder);
+    // The time the courier is available is the arrival time at the current order, plus the service time at client plus travelling back to the depot.  
     newOrder->assignedCourier->timeWhenAvailable = newOrder->arrivalTime + newOrder->serviceTimeAtClient + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
-    //std::cout<<"Hello: "<<newOrder->orderID<<" "<<newOrder->assignedCourier->courierID<<" "<<newOrder->assignedCourier->timeWhenAvailable<<" "<<newOrder->arrivalTime<<" "<<newOrder->serviceTimeAtClient<<" "<<data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID)<<std::endl;
+
 }
 
 
-void Environment::chooseClosestWarehouseForCourier(Courier* courier)
+void Environment::chooseWarehouseForCourier(Courier* courier)
 {
     // Increment the number of order that have been served
     nbOrdersServed ++;
     totalWaitingTime += nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime;
-    if (highestWaitingTimeOfAnOrder < nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime)
-    {
-        highestWaitingTimeOfAnOrder = nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime;
-    }
-    if (latestArrivalTime < courier->timeWhenAvailable){
-        latestArrivalTime = courier->timeWhenAvailable;
-    }
-    
-    saveRoute(nextOrderBeingServed->arrivalTime, courier->timeWhenAvailable, nextOrderBeingServed->client->lat, nextOrderBeingServed->client->lon, courier->assignedToWarehouse->lat, courier->assignedToWarehouse->lon);
     
     // Remove the order from the order that have not been served
     RemoveOrderFromVector(ordersAssignedToCourierButNotServed, nextOrderBeingServed);
     // Update the order that will be served next
     updateOrderBeingServedNext();
-    courier->assignedToOrder = nullptr;
+    //courier->assignedToOrders.erase(courier->assignedToOrders.begin());
     courier->assignedToWarehouse->currentNbCustomers -= 1;
 }
 
@@ -452,43 +508,29 @@ void Environment::chooseClosestWarehouseForOrder(Order* newOrder)
     int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
 
     newOrder->assignedWarehouse = warehouses[indexClosestWarehouse];
-    newOrder->accepted = true;
-
 }
 
 void Environment::chooseWarehouseBasedOnQuadrant(Order* newOrder)
 {
     newOrder->assignedWarehouse = warehouses[newOrder->client->inQuadrant->assignedToWarehouse->wareID];
-    newOrder->accepted = true;
 }
 
 
-void Environment::chooseWarehouseForOrderReassignment(Order* newOrder, float penaltyParameter)
+void Environment::chooseWarehouseForOrderReassignment(Order* newOrder, float penaltyParameter, bool bundle)
 {
     std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
     int warehouseCounter = 0;
     std::vector<int> indices(data->nbWarehouses);
     std::vector< int> costs(data->nbWarehouses, INT16_MAX);
-    std::vector< int> costs2(data->nbWarehouses, INT16_MAX);
     for(Warehouse* w: warehouses){
         int waitingForPickerTime = std::max(0,getFastestAvailablePicker(w)->timeWhenAvailable -currentTime);
-        int waitingForCourierTime = std::max(0,getFastestAvailableCourier(w)->timeWhenAvailable-(currentTime+ newOrder->timeToComission + waitingForPickerTime));
-        costs[warehouseCounter] = distancesToWarehouses[warehouseCounter]*(1-penaltyParameter) + penaltyParameter*(waitingForPickerTime + waitingForCourierTime);
-        costs2[warehouseCounter] = waitingForPickerTime;
+        int waitingForCourierTime = std::max(0,getFastestAvailableCourier(w)->timeWhenAvailable-(currentTime+ newOrder->commissionTime + waitingForPickerTime));
+        costs[warehouseCounter] = costsToWarehouse(newOrder, w, bundle)*(1-penaltyParameter) + distancesToWarehouses[warehouseCounter]*(penaltyParameter); // distancesToWarehouses[warehouseCounter]*(1-penaltyParameter) + penaltyParameter*(waitingForPickerTime + waitingForCourierTime);
         indices[warehouseCounter] = warehouseCounter;
         warehouseCounter += 1;
     }
     std::sort(indices.begin(), indices.end(),[&](int A, int B) -> bool {return costs[A] < costs[B];});
-    
-    if (costs2[indices[0]]>data->maxWaiting){
-        std::sort(indices.begin(), indices.end(),[&](int A, int B) -> bool {return costs2[A] < costs2[B];});
-        newOrder->assignedWarehouse = warehouses[indices[0]];
-    }else{
-        //std::cout<<costs2[indices[0]]<<std::endl;
-        newOrder->assignedWarehouse = warehouses[indices[0]];
-    }
-
-
+    newOrder->assignedWarehouse = warehouses[indices[0]];
 }
 
 void Environment::simulation(int policy)
@@ -512,6 +554,7 @@ void Environment::simulation(int policy)
         currentTime = 0;
         timeCustomerArrives = 0;
         timeNextCourierArrivesAtOrder = INT_MAX;
+        bool bundle = true;
         while (currentTime < data->simulationTime*1800 || ordersAssignedToCourierButNotServed.size() > 0){
             // Keep track of current time
             if ((size_t) counter == orderTimes.size()-1){
@@ -523,7 +566,7 @@ void Environment::simulation(int policy)
                 timeCustomerArrives += orderTimes[counter];
                 currentTime = timeCustomerArrives;
                 counter += 1;
-                // Draw new order and assign it to warehouse, picker and courier. MUST BE IN THAT ORDER!!!
+                // Draw new order and assign it to warehouse, courier, picker. MUST BE IN THAT ORDER!!!
                 Order* newOrder = new Order;
                 initOrder(timeCustomerArrives, counter-1, newOrder);
                 orders.push_back(newOrder);
@@ -531,21 +574,22 @@ void Environment::simulation(int policy)
                 if (policy==0){
                     chooseClosestWarehouseForOrder(newOrder);
                 }else if(policy == 1){
-                    chooseWarehouseForOrderReassignment(newOrder, 0.7);
+                    chooseWarehouseForOrderReassignment(newOrder, 0, bundle);
                 }else if(policy == 2){
                     chooseWarehouseBasedOnQuadrant(newOrder);
                 }
                 
                 newOrder->assignedWarehouse->ordersAssigned.push_back(newOrder);
+                chooseCourierForOrder(newOrder, bundle);
                 choosePickerForOrder(newOrder);
-                chooseCourierForOrder(newOrder);
+
                 AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
                 
             }else { // when a courier arrives at an order
                 if (nextOrderBeingServed){
                     Courier* c = nextOrderBeingServed->assignedCourier;
                     // We choose a warehouse for the courier
-                    chooseClosestWarehouseForCourier(c);
+                    chooseWarehouseForCourier(c);
                 }
             }
 
@@ -558,10 +602,8 @@ void Environment::simulation(int policy)
         if (nbOrdersServed > 0){
             //std::cout<<"----- Iteration: " << epoch << " Number of orders that arrived: " << orders.size() << " and served: " << nbOrdersServed << " Obj. value: " << getObjValue() << ". Mean wt: " << totalWaitingTime/nbOrdersServed <<" seconds. Highest wt: " << highestWaitingTimeOfAnOrder <<" seconds. -----" <<std::endl;
             meanWaitingTimeVector.push_back(totalWaitingTime/nbOrdersServed);
-            maxWaitingTimeVector.push_back(highestWaitingTimeOfAnOrder);
         }else{
             meanWaitingTimeVector.push_back(0);
-            maxWaitingTimeVector.push_back(0);
         }
 
         if (epoch % 1000 == 0) {
@@ -571,42 +613,11 @@ void Environment::simulation(int policy)
             runnning_waiting = 0.0;
             running_delays = 0.0;
         }
-
-        //std::cout<<"----- Simulation finished -----"<<std::endl;
-        //std::cout<<"----- Number of orders that arrived: " << orders.size() << " and served: " << nbOrdersServed << " Obj. value: " << getObjValue() << ". Mean wt: " << totalWaitingTime/nbOrdersServed <<" seconds. Highest wt: " << highestWaitingTimeOfAnOrder <<" seconds. -----" <<std::endl;
-        //writeRoutesAndOrdersToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
+        //writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
     }
     writeClientsStatsToFile("clientStatistics_CFA.txt");
-    //writeStatsToFile(averageCostVector, averageRejectionRateVector, meanWaitingTimeVector, maxWaitingTimeVector);
+    std::cout<<"----- Simulations finished -----"<<std::endl;
 }
-
-double Environment::getTotalWaitingTime(){
-    double sum = 0;
-    for (Order* o: orders){
-        if (o->arrivalTime-o->orderTime > data->maxWaiting){
-            sum += o->arrivalTime-o->orderTime-data->maxWaiting;
-        }
-    }
-    return sum/ orders.size();
-}
-
-double Environment::getTotalDelays(){
-    double sum = 0;
-    for (Order* o: orders){
-        if (o->arrivalTime-o->orderTime > data->maxWaiting){
-            sum += 1;
-        }
-    }
-    return sum/ orders.size();
-}
-
-// Function to sample an element from a probability distribution
-int Environment::sampleFromProbabilities(const std::vector<float>& probabilities) {
-    // Use discrete_distribution for sampling
-    std::discrete_distribution<int> distribution(probabilities.begin(), probabilities.end());
-    return distribution(data->rng);
-}
-
 
 void Environment::simulate(char *argv[])
 {   

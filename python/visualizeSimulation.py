@@ -4,14 +4,9 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import matplotlib
-import matplotlib.patches as mpatches
-from shapely.geometry import Point
 import matplotlib.animation as ani
-from IPython.display import HTML
 import json
 import math
-import random
 
 def createAnimation(graph, hubs, routes, orders, save: bool):
     """create an animation of a simulation as a gif file
@@ -45,10 +40,15 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
     # Determine the routes. For the orders, the "route" is just always the same node
     routesList = []
     for orig_node, dest_node in zip(orig_nodes, dest_nodes):
-        routesList.append(nx.shortest_path(graph, source=orig_node, target=dest_node, weight='length'))
+        try:
+            path = nx.shortest_path(graph, source=orig_node, target=dest_node, weight='length')
+        except nx.NetworkXNoPath:
+            path = [orig_node]
+        routesList.append(path)
     for node in order_nodes:
         routesList.append([node])
-    
+    print("Done determining shortest paths!")
+
     # Create projected graph
     projected_graph = ox.project_graph(graph, to_crs="EPSG:3395")
     # Keep track of the position at each courier and order at the different time points
@@ -58,13 +58,13 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
         points = []
         counter = 0
         # Iterate until the end of the planning period, with steps to speed things up
-        for t in range(0,routes["arrivalTime"].max(),18):
+        for t in range(0,routes["arrivalTime"].max(),50):
             counter += 1
-            show, step, served = 0, 0, 1
+            show, step = 0, 0
             if counterRoutes < len(routes):
                 routeType = "courier"
                 # If currentTime (t) is between start time and arrival time, show the courier on the map
-                if routes.loc[index,"startTime"] <= t and routes.loc[index,"arrivalTime"] > t:
+                if routes.loc[index,"startTime"] <= t and routes.loc[index, "leavingTime"] > t:
                     # Determine at which point (approximately) in the route the courier is at the currentTime t
                     ratio = (routes.loc[index,"arrivalTime"]-routes.loc[index,"startTime"])/len(route)
                     step = min(math.ceil((t-routes.loc[index,"startTime"])/ratio), len(route)-1)
@@ -72,8 +72,6 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
             else:
                 routeType = "order"
                 idx = index - len(routes)
-                if orders.loc[idx,"served"] == 0:
-                    served = 0
                 # If current time is between the time the order arrives and the order is served, show the order
                 if orders.loc[idx,"orderTime"] < t and orders.loc[idx,"arrivalTime"] > t:
                     step = 0
@@ -82,14 +80,17 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
             x = projected_graph.nodes[route[step]]['x']
             y = projected_graph.nodes[route[step]]['y']
             if show:
-                points.append([x, y, show, routeType, served])
+                points.append([x, y, show, routeType])
             else:
                 # Set x value to high value, so that the point wont be plotted on the grap
-                points.append([1000, y, show, routeType, served])
+                points.append([1000, y, show, routeType])
 
         final_route_coordinates.append(points)
         counterRoutes += 1 
     
+    print("Done with determining route to plot!")
+    print("Start plotting!")
+
     # Create a plot 
     fig, ax = ox.plot_graph(projected_graph, node_size=0, edge_linewidth=0.5, show=False, close=False) # network
     fig.set_size_inches(4,5)
@@ -112,30 +113,21 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
                                         color="blue",
                                         zorder = 3))
         else:
-            if (final_route_coordinates[j][0][4] == 1):
-                scatter_list.append(ax.scatter(final_route_coordinates[j][0][0], # x coordiante of the first node of the j route
-                                    final_route_coordinates[j][0][1], # y coordiante of the first node of the j route
-                                    alpha=1,
-                                    s = 16,
-                                    color="green",
-                                    label="orderServed",
-                                    zorder = 2))
-            else:
-                scatter_list.append(ax.scatter(final_route_coordinates[j][0][0], # x coordiante of the first node of the j route
-                    final_route_coordinates[j][0][1], # y coordiante of the first node of the j route
-                    alpha=1,
-                    s = 16,
-                    color="black",
-                    label="orderNotServed",
-                    zorder = 1))
+            scatter_list.append(ax.scatter(final_route_coordinates[j][0][0], # x coordiante of the first node of the j route
+                                final_route_coordinates[j][0][1], # y coordiante of the first node of the j route
+                                alpha=1,
+                                s = 16,
+                                color="green",
+                                label="orderServed",
+                                zorder = 2))
+
 
 
     # Plot the legend
     red_patch = plt.Line2D([], [], color="red", marker="o", linewidth=0, label ="Warehouse")
     blue_patch = plt.Line2D([], [], color="blue", marker="o", linewidth=0, label ="Courier")
     green_patch = plt.Line2D([], [], color="green", marker="o", linewidth=0, label ="Served Order")
-    black_patch = plt.Line2D([], [], color="black", marker="o", linewidth=0, label ="Rejected Order")
-    ax.legend(loc=3,handles=[red_patch, blue_patch, green_patch, black_patch])
+    ax.legend(loc=3,handles=[red_patch, blue_patch, green_patch])
         
     def animate(i):
         """Animate scatter plot (courier movement and order pop ups)
@@ -158,22 +150,12 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
                     scatter_list[j].set_zorder(3)
                     scatter_list[j].set_color("blue")
                 else:
-                    if (final_route_coordinates[j][0][4] == 1):
-                        # Try to plot a scatter plot
-                        x_j = final_route_coordinates[j][i][0]
-                        y_j = final_route_coordinates[j][i][1]
-                        scatter_list[j].set_offsets(np.c_[x_j, y_j])
-                        scatter_list[j].set_zorder(2)
-                        scatter_list[j].set_color("green")
-                    else:
-                        # Try to plot a scatter plot
-                        x_j = final_route_coordinates[j][i][0]
-                        y_j = final_route_coordinates[j][i][1]
-                        scatter_list[j].set_offsets(np.c_[x_j, y_j])
-                        scatter_list[j].set_zorder(1)
-                        scatter_list[j].set_color("black")
-
-
+                    # Try to plot a scatter plot
+                    x_j = final_route_coordinates[j][i][0]
+                    y_j = final_route_coordinates[j][i][1]
+                    scatter_list[j].set_offsets(np.c_[x_j, y_j])
+                    scatter_list[j].set_zorder(2)
+                    scatter_list[j].set_color("green")
             except:
                 # If i became > len(current_route) then continue to the next route
                 continue
@@ -182,8 +164,9 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
     # Finally we can create our animation
     animation = ani.FuncAnimation(fig, animate, frames=counter)
     if save:
+        print("Start creating Gif")
         writergif = ani.PillowWriter(fps=10) 
-        animation.save("animation_REINFORCE.gif", writer=writergif, dpi=200, savefig_kwargs={"transparent": True, "facecolor": "none"})
+        animation.save("animation.gif", writer=writergif, dpi=200, savefig_kwargs={"transparent": True, "facecolor": "none"})
     plt.show()
 
 
@@ -194,13 +177,14 @@ if __name__ == "__main__":
 
     ### These three lines code are meant to first download the graph and save it. As it is saved now, we can just load it
     # shapeFile = gpd.read_file("data/Polygon_900s").loc[0, 'geometry']
-    # G = ox.graph_from_polygon(shapeFile, network_type='drive', simplify=False)
+    # G = ox.graph_from_polygon(shapeFile, network_type='drive', simplify=True)
     # ox.save_graphml(G, 'data/chicago.graphml')
+    # print("Graph saved succesfully!")
     graph = ox.load_graphml("data/animationData/chicago.graphml")
 
 
     routes = pd.read_csv('data/animationData/routes.txt', sep=" ", header=None)
-    routes.columns = ["startTime", "arrivalTime", "fLat", "fLon", "tLat", "tLon"]
+    routes.columns = ["startTime", "arrivalTime", "leavingTime" ,"fLat", "fLon", "tLat", "tLon"]
 
     orders = pd.read_csv('data/animationData/orders.txt', sep=" ", header=None)
     orders.columns = ["orderTime", "arrivalTime", "Lat", "Lon", "served"]

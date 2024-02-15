@@ -61,9 +61,9 @@ Data::Data(char * argv[])
 	paramWarehouses = std::vector<Warehouse>(30); // 30 is an upper limit, can be increased ofc
 	//hourlyArrivalRates = {40,38,34,30,26,23,21,22,23,24,24,20,18,19,16,14,15,16,19,22,23};
 	//hourlyArrivalRates = {25,25,25,25,25,25,25,25,25,25,25};
-	//hourlyArrivalRates = {17,17,17,17,17,17,17,17,17,17,17};
-	hourlyArrivalRates = {24,25,24,16,19,24,23,15,11,19,18,24,24};
-	//hourlyArrivalRates = {33,32,29,29,28,26,25,23,21,17,20,25,28,30};
+	//hourlyArrivalRates = {40,40};
+	//hourlyArrivalRates = {24,25,24,16,19,24,23,15,11,19,18,24,24};
+	hourlyArrivalRates = {33,32,29,29,28,26,25,23,24,23,22,25,28,30};
 	std::string content, content2, content3;
 	std::ifstream inputFile(argv[1]);
 	if (!inputFile) throw std::runtime_error("Could not find file instance");
@@ -123,7 +123,7 @@ Data::Data(char * argv[])
 					{
 						inputFile >> paramClients[i].clientID >> paramClients[i].lon >> paramClients[i].lat;
 						paramClients[i].nbOrders.assign(hourlyArrivalRates.size(), 0);
-						paramClients[i].nbRejected.assign(hourlyArrivalRates.size(), 0);
+						paramClients[i].waitingTimes.assign(hourlyArrivalRates.size(), 0);
 					}
 								// Reduce the size of the vector of clients if possible
 					paramClients.resize(nbClients);
