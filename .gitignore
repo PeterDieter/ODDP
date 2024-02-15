@@ -3,10 +3,6 @@
 cache/
 __pycache__/
 onlineAssignment
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
 .env
 
 # Created by https://www.toptal.com/developers/gitignore/api/c++,visualstudiocode
