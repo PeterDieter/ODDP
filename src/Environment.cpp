@@ -391,15 +391,20 @@ void Environment::choosePickerForOrder(Order* newOrder)
     newOrder->assignedWarehouse->currentNbCustomers += 1;
 }
 
-int calculateDistance(double lat1, double long1, double lat2, double long2) {
+int calculateDistance(double lat1, double long1, double lat2, double long2, bool grid) {
     if(lat1 == lat2 && long1 == long2){
         return 0;
     }else{
-        double dist;
-        dist = sin(toRad(lat1)) * sin(toRad(lat2)) + cos(toRad(lat1)) * cos(toRad(lat2)) * cos(toRad(long1 - long2));
-        dist = acos(dist);
-        dist = 6371 * dist * 1000 / 5;
-        return int(dist);
+        if(!grid){
+            double dist;
+            dist = sin(toRad(lat1)) * sin(toRad(lat2)) + cos(toRad(lat1)) * cos(toRad(lat2)) * cos(toRad(long1 - long2));
+            dist = acos(dist);
+            dist = 6371 * dist * 1000 / 5;
+            return int(dist);
+        }else{
+            return int(abs(lat1 - lat2) + abs(long1 - long2)*10);
+        }
+
     }
 }
 
@@ -408,11 +413,11 @@ double Environment::insertOrderToCourierCosts(Order* newOrder, Courier* courier,
         int numberOfRoutes = courier->assignedToOrders.size()-1;
         if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable -currentTime) + newOrder->commissionTime){
             Order* lastOrder = courier->assignedToOrders[courier->assignedToOrders.size()-1].back();
-            double distance = calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon);
-            return lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + distance - currentTime;
+            double distance = calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon, gridInstance);
+            return lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance;
         };
     }
-    return std::max(courier->timeWhenAvailable, std::max(currentTime, getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable) + newOrder->commissionTime) - currentTime + 1*data->travelTime.get(newOrder->client->clientID, courier->assignedToWarehouse->wareID);
+    return std::max(courier->timeWhenAvailable, std::max(currentTime, getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable) + newOrder->commissionTime) - currentTime + data->travelTime.get(newOrder->client->clientID, courier->assignedToWarehouse->wareID);
 } 
 
 Courier* Environment::getCourierBundling(Order* newOrder, Warehouse* war){
@@ -458,13 +463,13 @@ void Environment::chooseCourierForOrder(Order* newOrder, bool bundling)
         }else{ // if a route is planned, we check if we can add the order to the current route
             int numberOfRoutes = newOrder->assignedCourier->assignedToOrders.size()-1;
             if (newOrder->assignedCourier->assignedToOrders[numberOfRoutes][0]->timeCourierLeavesToOrder <= currentTime + std::max(0,getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable -currentTime) + newOrder->commissionTime){
-                int earliestTimeToLeaveDepot = std::max(newOrder->orderTime+data->maxWaiting-data->travelTime.get(newOrder->client->clientID, newOrder->assignedCourier->assignedToWarehouse->wareID)-data->maxWaiting, std::max(currentTime + newOrder->commissionTime, std::max(newOrder->assignedCourier->timeWhenAvailable, getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable + newOrder->commissionTime)));
+                int earliestTimeToLeaveDepot = std::max(currentTime + newOrder->commissionTime, std::max(newOrder->assignedCourier->timeWhenAvailable, getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable + newOrder->commissionTime));
                 newOrder->timeCourierLeavesToOrder = earliestTimeToLeaveDepot + 0;
                 newOrder->arrivalTime = newOrder->timeCourierLeavesToOrder + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
                 newOrder->assignedCourier->assignedToOrders.push_back({newOrder});
             }else if(newOrder->assignedCourier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,getFastestAvailablePicker(newOrder->assignedWarehouse)->timeWhenAvailable -currentTime) + newOrder->commissionTime){
                 Order* lastOrder = newOrder->assignedCourier->assignedToOrders[numberOfRoutes].back();
-                newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon);
+                newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon, gridInstance);
                 newOrder->timeCourierLeavesToOrder = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient;
                 newOrder->assignedCourier->assignedToOrders[numberOfRoutes].push_back(newOrder);
             }
@@ -483,7 +488,6 @@ void Environment::chooseCourierForOrder(Order* newOrder, bool bundling)
 
     // The time the courier is available is the arrival time at the current order, plus the service time at client plus travelling back to the depot.  
     newOrder->assignedCourier->timeWhenAvailable = newOrder->arrivalTime + newOrder->serviceTimeAtClient + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
-
 }
 
 
@@ -574,7 +578,7 @@ void Environment::simulation(int policy)
                 if (policy==0){
                     chooseClosestWarehouseForOrder(newOrder);
                 }else if(policy == 1){
-                    chooseWarehouseForOrderReassignment(newOrder, 0, bundle);
+                    chooseWarehouseForOrderReassignment(newOrder, 0.2, bundle);
                 }else if(policy == 2){
                     chooseWarehouseBasedOnQuadrant(newOrder);
                 }
@@ -621,6 +625,11 @@ void Environment::simulation(int policy)
 
 void Environment::simulate(char *argv[])
 {   
+    gridInstance = false;
+    if (std::string(argv[1]) == "instances/grid.txt"){
+        gridInstance = true;
+    }
+
     if(std::string(argv[3])== "nearestWarehouse"){
         simulation(0);
     }else if(std::string(argv[3])== "reassignment"){

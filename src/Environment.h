@@ -47,6 +47,7 @@ private:
 	int timeCustomerArrives;
 	int timeNextCourierArrivesAtOrder;
 	int totalWaitingTime;
+	bool gridInstance;
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);
