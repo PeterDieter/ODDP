@@ -69,7 +69,6 @@ void Environment::initialize()
         newWarehouse->initialNbCouriers = data->paramWarehouses[wID].initialNbCouriers;
         newWarehouse->initialNbPickers = data->paramWarehouses[wID].initialNbPickers;
         newWarehouse->currentNbCustomers = 0;
-        newWarehouse->ordersAssigned = std::vector<Order*>(0);
 
         for (int cID = 0; cID < newWarehouse->initialNbCouriers; cID++)
         {
@@ -255,15 +254,6 @@ void Environment::writeMatrixToFile(std::vector<std::vector<double>> matrix, std
     }
 
     outputFile.close();
-}
-
-
-void Environment::RemoveOrderFromVector(std::vector<Order*> & V, Order* orderToDelete) {
-    V.erase(
-        std::remove_if(V.begin(), V.end(), [&](Order* const & o) {
-            return o->orderID == orderToDelete->orderID;
-        }),
-        V.end());
 }
 
 void Environment::AddOrderToVector(std::vector<Order*> & V, Order* orderToAdd) {
@@ -485,7 +475,7 @@ void Environment::chooseWarehouseForCourier(Courier* courier)
     totalWaitingTime += nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime;
     
     // Remove the order from the order that have not been served
-    RemoveOrderFromVector(ordersAssignedToCourierButNotServed, nextOrderBeingServed);
+    ordersAssignedToCourierButNotServed.pop_back();
     // Update the order that will be served next
     updateOrderBeingServedNext();
     //courier->assignedToOrders.erase(courier->assignedToOrders.begin());
@@ -579,7 +569,6 @@ void Environment::simulation(int policy)
                     chooseWarehouseBasedOnQuadrant(newOrder);
                 }
                 
-                newOrder->assignedWarehouse->ordersAssigned.push_back(newOrder);
                 updateInformation(newOrder, bundle); 
                 AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
                 
