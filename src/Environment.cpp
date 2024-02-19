@@ -28,7 +28,7 @@ void Environment::initialize()
     int pickerCounter = 0;
     totalWaitingTime = 0;
     nbOrdersServed = 0;
-    rejectCount = 0;
+    bundledOrders = 0;
     nextOrderBeingServed = nullptr;
     bundle = true;
 
@@ -448,6 +448,12 @@ void Environment::updateInformation(Order* newOrder, bool bundling)
                 newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon, gridInstance);
                 newOrder->timeCourierLeavesToOrder = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient;
                 newOrder->assignedCourier->assignedToOrders[numberOfRoutes].push_back(newOrder);
+                if (newOrder->assignedCourier->assignedToOrders[numberOfRoutes].size() == 1){
+                    bundledOrders += 2;
+                }else{
+                    bundledOrders += 1;
+                }
+ 
             }
         }
     }else{
@@ -532,10 +538,10 @@ void Environment::simulation(int policy)
 {
     std::cout<<"----- Simulation starts -----"<<std::endl;
    
-    double running_costs = 0.0;
     double runningCounter = 0.0;
     double runnning_waiting = 0.0;
     double running_delays = 0.0;
+    double running_bundling = 0.0;
     std::vector< float> averageRejectionRateVector;
     std::vector< float> meanWaitingTimeVector;
     std::vector< float> maxWaitingTimeVector;
@@ -588,8 +594,9 @@ void Environment::simulation(int policy)
         }
         writeOrderStatsToClients();
         runningCounter += 1;
-        runnning_waiting += getTotalWaitingTime(); // (float)rejectCount/ orders.size();
+        runnning_waiting += getTotalWaitingTime();
         running_delays += getTotalDelays();
+        running_bundling += (float)bundledOrders/orders.size();
         averageRejectionRateVector.push_back(getTotalWaitingTime());
         if (nbOrdersServed > 0){
             //std::cout<<"----- Iteration: " << epoch << " Number of orders that arrived: " << orders.size() << " and served: " << nbOrdersServed << " Obj. value: " << getObjValue() << ". Mean wt: " << totalWaitingTime/nbOrdersServed <<" seconds. Highest wt: " << highestWaitingTimeOfAnOrder <<" seconds. -----" <<std::endl;
@@ -598,16 +605,17 @@ void Environment::simulation(int policy)
             meanWaitingTimeVector.push_back(0);
         }
 
-        if (epoch % 1000 == 0) {
+        if (epoch % 500 == 0) {
 
-            std::cout << "[Iteration: " << epoch << "] Delayed orders:" << running_delays / runningCounter << " Average delay: "<< runnning_waiting / runningCounter  << std::endl;
+            std::cout << "[Iteration: " << epoch << "] Delayed orders:" << running_delays / runningCounter << " Average delay: "<< runnning_waiting / runningCounter << " Average percentage bundled: "<< running_bundling / runningCounter  << std::endl;
             runningCounter = 0.0;
             runnning_waiting = 0.0;
             running_delays = 0.0;
+            running_bundling = 0.0;
         }
-        //writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
+        writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
     }
-    writeClientsStatsToFile("clientStatistics_CFA.txt");
+    //writeClientsStatsToFile("clientStatistics_CFA.txt");
     std::cout<<"----- Simulations finished -----"<<std::endl;
 }
 

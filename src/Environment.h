@@ -43,12 +43,12 @@ private:
 	std::vector<int> timesToServe;								// Vector of times how long it takes to serve a client at his house. Same length as orderTimes vector. Will be created upon initialization
 	int currentTime;
 	int nbOrdersServed;
-	int rejectCount;
 	int timeCustomerArrives;
 	int timeNextCourierArrivesAtOrder;
 	int totalWaitingTime;
 	bool gridInstance;
 	bool bundle;
+	int bundledOrders;
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);

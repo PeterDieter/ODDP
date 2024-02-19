@@ -61,8 +61,8 @@ Data::Data(char * argv[])
 	paramWarehouses = std::vector<Warehouse>(30); // 30 is an upper limit, can be increased ofc
 	//hourlyArrivalRates = {40,38,34,30,26,23,21,22,23,24,24,20,18,19,16,14,15,16,19,22,23};
 	//hourlyArrivalRates = {25,25,25,25,25,25,25,25,25,25,25};
-	//hourlyArrivalRates = {40,40};
-	hourlyArrivalRates = {24,25,24,13,14,19,21,15,11,15,18,24,24};
+	hourlyArrivalRates = {48,48};
+	//hourlyArrivalRates = {24,25,24,13,14,19,21,15,11,15,18,24,24};
 	//hourlyArrivalRates = {13,12,12,13,16,18,16,12,7,15,12,11,24};
 	//hourlyArrivalRates = {33,32,29,29,28,26,25,23,21,17,20,25,28,30};
 	std::string content, content2, content3;
