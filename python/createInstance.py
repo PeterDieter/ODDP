@@ -157,9 +157,6 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
         warehouseCounter = 0
         clientCounter += 1
     matrix = matrix.astype(int)
-    print(matrix)
-
-
 
     with open("instances/"+fileName+".txt", 'w') as f:
         f.write("\n".join([
@@ -199,5 +196,5 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
 
 
 if __name__ == "__main__":
-    create_instance(fileName = "instance_zip", limit=900, couriersPerWarehouse=10, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=120, gridStepSize=1000)
-    create_grid_instance(fileName = "instance_grid", couriersPerWarehouse=8, pickersPerWarehouse=4, meanComissionTime=180, meanServiceTimeAtClient=60)
+    create_instance(fileName = "zip", limit=900, couriersPerWarehouse=10, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=120, gridStepSize=1000)
+    create_grid_instance(fileName = "grid", couriersPerWarehouse=8, pickersPerWarehouse=4, meanComissionTime=180, meanServiceTimeAtClient=120)

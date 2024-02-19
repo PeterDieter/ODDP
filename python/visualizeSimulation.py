@@ -118,7 +118,7 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
                                 alpha=1,
                                 s = 16,
                                 color="green",
-                                label="orderServed",
+                                label="served",
                                 zorder = 2))
 
 
@@ -126,7 +126,7 @@ def createAnimation(graph, hubs, routes, orders, save: bool):
     # Plot the legend
     red_patch = plt.Line2D([], [], color="red", marker="o", linewidth=0, label ="Warehouse")
     blue_patch = plt.Line2D([], [], color="blue", marker="o", linewidth=0, label ="Courier")
-    green_patch = plt.Line2D([], [], color="green", marker="o", linewidth=0, label ="Served Order")
+    green_patch = plt.Line2D([], [], color="green", marker="o", linewidth=0, label ="Order")
     ax.legend(loc=3,handles=[red_patch, blue_patch, green_patch])
         
     def animate(i):

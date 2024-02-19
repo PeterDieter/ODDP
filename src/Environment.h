@@ -48,6 +48,7 @@ private:
 	int timeNextCourierArrivesAtOrder;
 	int totalWaitingTime;
 	bool gridInstance;
+	bool bundle;
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);
@@ -60,12 +61,11 @@ private:
 
 	// Functions that assigns order to a warehouse, picker and courier, respectively
 	void chooseClosestWarehouseForOrder(Order* newOrder);
-	void chooseWarehouseBasedOnQuadrant(Order* newOrder);
-	void choosePickerForOrder(Order* newOrder);
-	void chooseCourierForOrder(Order* newOrder, bool bundling);
+	void chooseWarehouseBasedOnQuadrant(Order* newOrder);;
+	void updateInformation(Order* newOrder, bool bundling);
 
 	// Choose warehouse for an order, based on the Lower bound policy
-	void chooseWarehouseForOrderReassignment(Order* newOrder, float penaltyParameter, bool bundle);
+	void chooseWarehouseForOrderReassignment(Order* newOrder, bool bundle);
 
 	// Function that assigns a courier to the closest warehouse
 	void chooseWarehouseForCourier(Courier* courier);
@@ -84,10 +84,8 @@ private:
 
 	// Function that returns the fastest available courier assigned to a warehouse
 	Courier* getFastestAvailableCourier(Warehouse* warehouse);
-	Courier* getCourierBundling(Order* newOrder, Warehouse* warehouse);
 	double insertOrderToCourierCosts(Order* newOrder, Courier* courier, bool bundle);
-	double getLeavingTimeCourier(Courier* courier);
-	int costsToWarehouse(Order* newOrder, Warehouse* war, bool bundle);
+	std::tuple<int, Courier*>  costsToWarehouse(Order* newOrder, Warehouse* war, bool bundle);
 
 	// Function that updates the order that will be served next
 	void updateOrderBeingServedNext();
