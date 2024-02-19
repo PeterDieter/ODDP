@@ -439,9 +439,9 @@ void Environment::updateInformation(Order* newOrder, bool bundling)
             int numberOfRoutes = newOrder->assignedCourier->assignedToOrders.size()-1;
             if (newOrder->assignedCourier->assignedToOrders[numberOfRoutes][0]->timeCourierLeavesToOrder <= currentTime + std::max(0,newOrder->assignedPicker->timeWhenAvailable -currentTime) + newOrder->commissionTime){
                 int earliestTimeToLeaveDepot = std::max(currentTime + newOrder->commissionTime, std::max(newOrder->assignedCourier->timeWhenAvailable, newOrder->assignedPicker->timeWhenAvailable + newOrder->commissionTime));
-                //std::cout<<earliestTimeToLeaveDepot<<" "<<currentTime<<" "<<currentTime+data->maxWaiting-data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID)<<std::endl;
                 newOrder->timeCourierLeavesToOrder = earliestTimeToLeaveDepot;
                 newOrder->arrivalTime = newOrder->timeCourierLeavesToOrder + data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID);
+                //std::cout<<currentTime<<" "<<earliestTimeToLeaveDepot<<" "<<currentTime+data->maxWaiting-data->travelTime.get(newOrder->client->clientID, newOrder->assignedWarehouse->wareID)<<" "<<newOrder->arrivalTime-newOrder->orderTime-data->maxWaiting<<std::endl;
                 newOrder->assignedCourier->assignedToOrders.push_back({newOrder});
             }else if(newOrder->assignedCourier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,newOrder->assignedPicker->timeWhenAvailable -currentTime) + newOrder->commissionTime){
                 Order* lastOrder = newOrder->assignedCourier->assignedToOrders[numberOfRoutes].back();
@@ -613,7 +613,7 @@ void Environment::simulation(int policy)
             running_delays = 0.0;
             running_bundling = 0.0;
         }
-        writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
+        //writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
     }
     //writeClientsStatsToFile("clientStatistics_CFA.txt");
     std::cout<<"----- Simulations finished -----"<<std::endl;
