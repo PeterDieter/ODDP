@@ -18,7 +18,7 @@ TARGETDIR=src
 GRB_INCS = -I$(GUROBI_HOME)/include
 # adds directory  the linker looks for libraries "libgurobi90.so"
 # (or "libgurobi_c++.a" which might need to be recompiled)
-GRB_LIBS = -L$(GUROBI_HOME)/lib -lgurobi_g++5.2 -lgurobi100
+GRB_LIBS = -L$(GUROBI_HOME)/lib -lgurobi_g++8.5 -lgurobi110
 
 CCFLAGS += $(GRB_INCS)
 

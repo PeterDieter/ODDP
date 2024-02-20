@@ -36,6 +36,10 @@ void Environment::initialize()
 			delete ordersAssignedToCourierButNotServed[ord];
 	}
     ordersAssignedToCourierButNotServed = std::vector<Order*>(0);
+		
+		if ( ordersPending.size() > 0 ) {
+			ordersPending.clear();
+		}
     
     for (size_t ord=0; ord<couriers.size(); ord++) {
 		delete couriers[ord];
@@ -475,7 +479,7 @@ void Environment::chooseWarehouseForCourier(Courier* courier)
     totalWaitingTime += nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime;
     
     // Remove the order from the order that have not been served
-    ordersAssignedToCourierButNotServed.pop_back();
+		ordersAssignedToCourierButNotServed.erase(ordersAssignedToCourierButNotServed.begin());
     // Update the order that will be served next
     updateOrderBeingServedNext();
     //courier->assignedToOrders.erase(courier->assignedToOrders.begin());
@@ -535,7 +539,9 @@ void Environment::simulation(int policy)
     std::vector< float> averageRejectionRateVector;
     std::vector< float> meanWaitingTimeVector;
     std::vector< float> maxWaitingTimeVector;
-
+		
+		
+		std::printf("[Iteration]\t Delayed orders\t Average delay\t Average percentage bundled\n");
     for (int epoch = 1; epoch <= 5000; epoch++) {
         // Initialize data structures
         initialize();
@@ -545,14 +551,13 @@ void Environment::simulation(int policy)
         currentTime = 0;
         timeCustomerArrives = 0;
         timeNextCourierArrivesAtOrder = INT_MAX;
+        timePickerAvail = 0;
         while (currentTime < data->simulationTime*1800 || ordersAssignedToCourierButNotServed.size() > 0){
-            // Keep track of current time
-            if ((size_t) counter == orderTimes.size()-1){
-                currentTime = timeNextCourierArrivesAtOrder;
-            }else{
-                currentTime = std::min(timeCustomerArrives + orderTimes[counter] , timeNextCourierArrivesAtOrder);
-            }
-            if (timeCustomerArrives + orderTimes[counter] < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*1800  && (size_t) counter<orderTimes.size()-1){
+						int event = -1;
+            // Keep track of current time and set event type
+						currentTime = calc_next_decision_time(counter,event);//, const order* order)
+            std::cout << "Event= " << event<< std::endl;
+            if ( event == 0 ) {
                 timeCustomerArrives += orderTimes[counter];
                 currentTime = timeCustomerArrives;
                 counter += 1;
@@ -560,8 +565,23 @@ void Environment::simulation(int policy)
                 Order* newOrder = new Order;
                 initOrder(timeCustomerArrives, counter-1, newOrder);
                 orders.push_back(newOrder);
-                // We immediately assign the order to a warehouse and a picker
-                if (policy==0){
+								ordersPending.push_back(newOrder);
+//                 // We immediately assign the order to a warehouse and a picker
+//                 if (policy==0){
+//                     chooseClosestWarehouseForOrder(newOrder);
+//                 }else if(policy == 1){
+//                     chooseWarehouseForOrderReassignment(newOrder, bundle);
+//                 }else if(policy == 2){
+//                     chooseWarehouseBasedOnQuadrant(newOrder);
+//                 }
+//                 
+//                 updateInformation(newOrder, bundle); 
+//                 AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
+                
+						}
+						else if ( event == 2 ) {
+							Order* newOrder = ordersPending.front();
+							if (policy==0){
                     chooseClosestWarehouseForOrder(newOrder);
                 }else if(policy == 1){
                     chooseWarehouseForOrderReassignment(newOrder, bundle);
@@ -571,14 +591,19 @@ void Environment::simulation(int policy)
                 
                 updateInformation(newOrder, bundle); 
                 AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
-                
-            }else { // when a courier arrives at an order
+								ordersPending.pop_front();
+            }
+            else if ( event == 1 ) { // when a courier arrives at an order
                 if (nextOrderBeingServed){
                     Courier* c = nextOrderBeingServed->assignedCourier;
                     // We choose a warehouse for the courier
                     chooseWarehouseForCourier(c);
                 }
             }
+            else {
+							std::cout << "Error: Unknown event" << std::endl;
+							std::exit(-1);
+						}
 
         }
         writeOrderStatsToClients();
@@ -593,10 +618,9 @@ void Environment::simulation(int policy)
         }else{
             meanWaitingTimeVector.push_back(0);
         }
-
+				
         if (epoch % 500 == 0) {
-
-            std::cout << "[Iteration: " << epoch << "] Delayed orders:" << running_delays / runningCounter << " Average delay: "<< runnning_waiting / runningCounter << " Average percentage bundled: "<< running_bundling / runningCounter  << std::endl;
+						std::printf("[%9.0d]\t %.4f\t\t %.4f\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter);
             runningCounter = 0.0;
             runnning_waiting = 0.0;
             running_delays = 0.0;
@@ -625,4 +649,43 @@ void Environment::simulate(char *argv[])
         std::cerr<<"Method: " << argv[3] << " not found."<<std::endl;
     }
 
+}
+
+int Environment::calc_next_decision_time(int count,int& event){//, const order* order) {
+	int curr_time = 0;
+	// compute next decision date
+	if ( (size_t) count == orderTimes.size()-1 ) {
+		curr_time = timeNextCourierArrivesAtOrder;
+	}
+	else{
+		curr_time = std::min(timeCustomerArrives + orderTimes[count] , timeNextCourierArrivesAtOrder);
+	}
+	
+	// get fastest available picker
+	int time_picker = INT_MAX;
+	//std::cout << "blabef" << std::endl;
+	for ( size_t wh=0; wh < warehouses.size(); wh++) {
+		Picker* tmp_picker = getFastestAvailablePicker(warehouses[wh]);
+		int tmp_time = tmp_picker->timeWhenAvailable;
+		if ( time_picker > tmp_time - 0.5 ) {
+			time_picker = tmp_time;
+		}
+		//std::cout << "bla" << wh << std::endl;
+	}
+	
+	// set event for decision date
+	if (timeCustomerArrives + orderTimes[count] < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*1800  && (size_t) count<orderTimes.size()-1){
+		if ( ordersPending.size() > 0 && time_picker < curr_time ) {
+			event = 2;
+			curr_time = time_picker;
+		}
+		else {
+			event = 0;
+		}
+	}
+	else {
+		event = 1;
+	}
+	
+	return curr_time;
 }

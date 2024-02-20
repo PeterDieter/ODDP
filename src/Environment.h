@@ -9,12 +9,13 @@
 #include <ctime>
 #include <chrono>
 #include <random>
+#include <deque>
 
 #include "Matrix.h"
 #include "Data.h"
 #include "Environment.h"
 
-struct neuralNetwork;
+
 
 class Environment
 {
@@ -32,6 +33,7 @@ private:
 	std::vector<Order*> orders;									// Vector of pointers to orders. containing information on each order
 	std::vector<Order*> ordersNewSimulation;
 	std::vector<Order*> ordersAssignedToCourierButNotServed;	// Vector of orders that have not been served yet
+	std::deque<Order*> ordersPending;	// deque of orders that have not been preocessed yet
 	std::vector<Warehouse*> warehouses;							// Vector of pointers containing information on each warehouse
 	std::vector<Courier*> couriers;								// Vector of pointers containing  information on each courier
 	std::vector<Picker*> pickers;								// Vector of pointers  containing information on each picker
@@ -45,6 +47,7 @@ private:
 	int nbOrdersServed;
 	int timeCustomerArrives;
 	int timeNextCourierArrivesAtOrder;
+	int timePickerAvail;
 	int totalWaitingTime;
 	bool gridInstance;
 	bool bundle;
@@ -99,7 +102,19 @@ private:
 	
 	// Function to draw an inter arrival time based on rate specified in data
 	int drawFromExponentialDistribution(double lambda);
-
+	
+	// new member functions used for postponement
+	int calc_next_decision_time(int,int&);//,const order*);
+	// Parameters:
+	//  - count				number of simulated customers
+	//  - event				address of integer indicating the eventtype
+	//  - 						(new customer: 							0,
+	//  - 						 courier arrives at order: 	1,
+	//  - 						 picker becomes available: 	2, TODO
+	//  - 						 postponement: 							3) TODO
+	// Return:
+	//  - curr_time		time of the event
+	
 };
 
 
