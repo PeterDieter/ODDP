@@ -556,7 +556,8 @@ void Environment::simulation(int policy)
 						int event = -1;
             // Keep track of current time and set event type
 						currentTime = calc_next_decision_time(counter,event);//, const order* order)
-            std::cout << "Event= " << event<< std::endl;
+            //std::cout << "Event= " << event<< std::endl;
+						
             if ( event == 0 ) {
                 timeCustomerArrives += orderTimes[counter];
                 currentTime = timeCustomerArrives;
@@ -651,11 +652,12 @@ void Environment::simulate(char *argv[])
 
 }
 
-int Environment::calc_next_decision_time(int count,int& event){//, const order* order) {
+int Environment::calc_next_decision_time(int count,int& event) {//, const order* order) {
 	int curr_time = 0;
 	// compute next decision date
 	if ( (size_t) count == orderTimes.size()-1 ) {
 		curr_time = timeNextCourierArrivesAtOrder;
+		event = 1;
 	}
 	else{
 		curr_time = std::min(timeCustomerArrives + orderTimes[count] , timeNextCourierArrivesAtOrder);
@@ -667,15 +669,17 @@ int Environment::calc_next_decision_time(int count,int& event){//, const order* 
 	for ( size_t wh=0; wh < warehouses.size(); wh++) {
 		Picker* tmp_picker = getFastestAvailablePicker(warehouses[wh]);
 		int tmp_time = tmp_picker->timeWhenAvailable;
+		//std::cout << "time_pavail[" << wh << "]= " << time_picker << std::endl;
 		if ( time_picker > tmp_time - 0.5 ) {
 			time_picker = tmp_time;
 		}
 		//std::cout << "bla" << wh << std::endl;
 	}
-	
+	//std::cout << "time_picker= " << time_picker << std::endl;
 	// set event for decision date
-	if (timeCustomerArrives + orderTimes[count] < timeNextCourierArrivesAtOrder && currentTime <= data->simulationTime*1800  && (size_t) count<orderTimes.size()-1){
-		if ( ordersPending.size() > 0 && time_picker < curr_time ) {
+	if ( (timeCustomerArrives + orderTimes[count] < timeNextCourierArrivesAtOrder) && \
+			 (currentTime <= data->simulationTime*1800)  && ((size_t) count < orderTimes.size() - 1) ) {
+		if ( (ordersPending.size() > 0) && (time_picker < curr_time) ) {
 			event = 2;
 			curr_time = time_picker;
 		}
@@ -686,6 +690,6 @@ int Environment::calc_next_decision_time(int count,int& event){//, const order* 
 	else {
 		event = 1;
 	}
-	
+
 	return curr_time;
 }
