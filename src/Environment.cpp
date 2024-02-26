@@ -567,18 +567,6 @@ void Environment::simulation(int policy)
                 initOrder(timeCustomerArrives, counter-1, newOrder);
                 orders.push_back(newOrder);
 								ordersPending.push_back(newOrder);
-//                 // We immediately assign the order to a warehouse and a picker
-//                 if (policy==0){
-//                     chooseClosestWarehouseForOrder(newOrder);
-//                 }else if(policy == 1){
-//                     chooseWarehouseForOrderReassignment(newOrder, bundle);
-//                 }else if(policy == 2){
-//                     chooseWarehouseBasedOnQuadrant(newOrder);
-//                 }
-//                 
-//                 updateInformation(newOrder, bundle); 
-//                 AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
-                
 						}
 						else if ( event == 2 ) {
 							Order* newOrder = ordersPending.front();
@@ -678,10 +666,10 @@ int Environment::calc_next_decision_time(int count,int& event) {//, const order*
 	//std::cout << "time_picker= " << time_picker << std::endl;
 	// set event for decision date
 	if ( (timeCustomerArrives + orderTimes[count] < timeNextCourierArrivesAtOrder) && \
-			 (currentTime <= data->simulationTime*1800)  && ((size_t) count < orderTimes.size() - 1) ) {
-		if ( (ordersPending.size() > 0) && (time_picker < curr_time) ) {
+			 (curr_time <= data->simulationTime*1800)  && ((size_t) count < orderTimes.size() - 1) ) {
+		if ( (ordersPending.size() > 0) && (currentTime + time_picker < curr_time) ) {
 			event = 2;
-			curr_time = time_picker;
+			curr_time = currentTime + time_picker;
 		}
 		else {
 			event = 0;
