@@ -35,7 +35,6 @@ void Environment::initialize()
     currentTime = 0;
     timeCustomerArrives = 0;
     timeNextCourierArrivesAtOrder = INT_MAX;
-    nextDecisionTime = 0;
 
     for (size_t ord=0; ord<ordersAssignedToCourierButNotServed.size(); ord++) {
 			delete ordersAssignedToCourierButNotServed[ord];

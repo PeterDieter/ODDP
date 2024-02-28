@@ -53,7 +53,6 @@ private:
 	bool bundle;
 	int bundledOrders;
 	int timeStepSize;
-	int nextDecisionTime;
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);
