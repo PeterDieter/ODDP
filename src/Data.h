@@ -63,7 +63,8 @@ struct Order
 	int serviceTimeAtClient;		// Time it takes to serve the client at the door
 	int donePickingTime;			// Time when picking the order is done
 	int timeCourierLeavesToOrder;	// Time the courier leaves either depot or other customer to drive to order
-	int arrivalTime;				// time the courier arrives at the client, i.e., the client is served
+	int arrivalTime;				// Time the courier arrives at the client, i.e., the client is served
+	int decisionTime;				// Time when decision is made about where to assign the order to
 };
 
 // Structure of a route. This is stored mainly for plotting purposes later on

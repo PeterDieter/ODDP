@@ -33,7 +33,7 @@ private:
 	std::vector<Order*> orders;									// Vector of pointers to orders. containing information on each order
 	std::vector<Order*> ordersNewSimulation;
 	std::vector<Order*> ordersAssignedToCourierButNotServed;	// Vector of orders that have not been served yet
-	std::deque<Order*> ordersPending;	// deque of orders that have not been preocessed yet
+	std::vector<Order*> ordersPending;							// vector of orders that have not been preocessed yet
 	std::vector<Warehouse*> warehouses;							// Vector of pointers containing information on each warehouse
 	std::vector<Courier*> couriers;								// Vector of pointers containing  information on each courier
 	std::vector<Picker*> pickers;								// Vector of pointers  containing information on each picker
@@ -52,6 +52,8 @@ private:
 	bool gridInstance;
 	bool bundle;
 	int bundledOrders;
+	int timeStepSize;
+	int nextDecisionTime;
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);
@@ -104,7 +106,7 @@ private:
 	int drawFromExponentialDistribution(double lambda);
 	
 	// new member functions used for postponement
-	int calc_next_decision_time(int,int&);//,const order*);
+	int calcTimeAndEvent(int,int&);//,const order*);
 	// Parameters:
 	//  - count				number of simulated customers
 	//  - event				address of integer indicating the eventtype
@@ -114,6 +116,8 @@ private:
 	//  - 						 postponement: 							3) TODO
 	// Return:
 	//  - curr_time		time of the event
+
+	int calcNewdecisionTime(Order* newOrder);
 	
 };
 
