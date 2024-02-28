@@ -192,7 +192,7 @@ void Environment::writeCourierRoutesToFile(std::string fileNameRoutes, std::stri
     }else std::cout << "----- Cannot Open one of the files -----" << std::endl;
 }
 
-void Environment::writeCostsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training){
+void Environment::writeCostsToFile(std::vector<float> costs, std::vector<float> averageDelayRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training){
     std::string fileName;
     if (is_training){
         fileName = "data/experimentData/trainingData/averageCosts_" + std::to_string(data->maxWaiting) + "_" + std::to_string(lambdaTemporal) + "_" + std::to_string(lambdaSpatial) +".txt";
@@ -206,12 +206,12 @@ void Environment::writeCostsToFile(std::vector<float> costs, std::vector<float> 
 	if (myfile.is_open())
 	{
         int _i = 0;
-        myfile << "TotalCosts " << "RejectionRate ";
+        myfile << "TotalCosts " << "DelayRate ";
         myfile << std::endl;
 		for (auto cost : costs)
 		{
             // Here we print the order of customers that we visit 
-            myfile << cost << " " << averageRejectionRateVector[_i];
+            myfile << cost << " " << averageDelayRateVector[_i];
             myfile << std::endl;
             _i += 1;
 		}
@@ -220,7 +220,7 @@ void Environment::writeCostsToFile(std::vector<float> costs, std::vector<float> 
 }
 
 
-void Environment::writeStatsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, std::vector<float> averageWaitingTime, std::vector<float> maxWaitingTime){
+void Environment::writeStatsToFile(std::vector<float> costs, std::vector<float> averageDelayRateVector, std::vector<float> averageWaitingTime, std::vector<float> maxWaitingTime){
     std::string fileName;
     fileName = "data/experimentData/trainingData/statsData_" + std::to_string(data->maxWaiting) +".txt";
    
@@ -230,12 +230,12 @@ void Environment::writeStatsToFile(std::vector<float> costs, std::vector<float> 
 	if (myfile.is_open())
 	{
         int _i = 0;
-        myfile << "TotalCosts " << "RejectionRate " <<"MeanWaitingTime " << "MaxWaitingTime ";
+        myfile << "TotalCosts " << "DelayRate " <<"MeanWaitingTime " << "MaxWaitingTime ";
         myfile << std::endl;
 		for (auto cost : costs)
 		{
             // Here we print the order of customers that we visit 
-            myfile << cost << " " << averageRejectionRateVector[_i]<< " " << averageWaitingTime[_i]<< " " << maxWaitingTime[_i];
+            myfile << cost << " " << averageDelayRateVector[_i]<< " " << averageWaitingTime[_i]<< " " << maxWaitingTime[_i];
             myfile << std::endl;
             _i += 1;
 		}
@@ -265,11 +265,26 @@ void Environment::writeMatrixToFile(std::vector<std::vector<double>> matrix, std
     outputFile.close();
 }
 
-void Environment::AddOrderToVector(std::vector<Order*> & V, Order* orderToAdd) {
+void Environment::addOrderToVectorArrivalTime(std::vector<Order*> & V, Order* orderToAdd) {
     bool inserted = false;
     for (int i = V.size() - 1; i >= 0; --i) {
         Order* obj = V[i]; // Access the object using the index
         if(obj->arrivalTime < orderToAdd->arrivalTime){
+            V.insert(V.begin() + i +1, orderToAdd);
+            inserted = true;
+            break;
+        }
+    }
+    if(!inserted){
+       V.insert(V.begin(), orderToAdd); 
+    }
+}
+
+void Environment::addOrderToVectorDecisionTime(std::vector<Order*> & V, Order* orderToAdd) {
+    bool inserted = false;
+    for (int i = V.size() - 1; i >= 0; --i) {
+        Order* obj = V[i]; // Access the object using the index
+        if(obj->decisionTime < orderToAdd->decisionTime){
             V.insert(V.begin() + i +1, orderToAdd);
             inserted = true;
             break;
@@ -432,7 +447,6 @@ std::tuple<int, Courier*>  Environment::costsToWarehouse(Order* newOrder, Wareho
 
 void Environment::updateInformation(Order* newOrder, bool bundling)
 {
-
     // First courier stuff
     if (bundling){
         if (newOrder->assignedCourier->assignedToOrders.size() == 0){// First we check if the courier already has a route planned
@@ -546,7 +560,7 @@ void Environment::simulation(int policy)
     double runnning_waiting = 0.0;
     double running_delays = 0.0;
     double running_bundling = 0.0;
-    std::vector< float> averageRejectionRateVector;
+    std::vector< float> averageDelayRateVector;
 		
 	std::printf("[Iteration]\t Delayed orders\t Average delay\t Average percentage bundled\n");
     for (int epoch = 1; epoch <= 5000; epoch++) {
@@ -563,10 +577,9 @@ void Environment::simulation(int policy)
                 counter += 1;
                 Order* newOrder = new Order;
                 initOrder(timeCustomerArrives, counter-1, newOrder);
-                nextDecisionTime = calcNewdecisionTime(newOrder); // For now the next decision time is the same time the order arrives
-                newOrder->decisionTime = nextDecisionTime;
+                newOrder->decisionTime = calcNewdecisionTime(newOrder);
                 orders.push_back(newOrder);
-				ordersPending.push_back(newOrder);
+                addOrderToVectorDecisionTime(ordersPending, newOrder); // add Order to ordersPending based on the decision time determined before
 			}else if (event == 1 ){ // Or we make a decision
                 Order* newOrder = ordersPending.front();
                 if (policy==0){
@@ -577,7 +590,7 @@ void Environment::simulation(int policy)
                     chooseWarehouseBasedOnQuadrant(newOrder);
                 }
                 updateInformation(newOrder, bundle); 
-                AddOrderToVector(ordersAssignedToCourierButNotServed, newOrder);
+                addOrderToVectorArrivalTime(ordersAssignedToCourierButNotServed, newOrder);
                 ordersPending.erase(ordersPending.begin());
             }else if ( event == 2 ) { // Or a courier arrives at an order
                 if (nextOrderBeingServed){
@@ -630,30 +643,25 @@ void Environment::simulate(char *argv[])
 }
 
 int Environment::calcNewdecisionTime(Order* newOrder){
-    // For now we just delay the decision by 30 seconds or we make the decision at the decisionTime determined before
-    if(currentTime<nextDecisionTime){
-        return nextDecisionTime;
-    }else{
-        return currentTime+30; 
-    }
-    
+    // For now we just take the decision immediately
+    return currentTime;  
 }
 
 int Environment::calcTimeAndEvent(int count,int& event) {
 	int curr_time = 0;
-	// compute next decision date
+	// compute current time
 	if ( (size_t) count == orderTimes.size()-1 ) {
 		curr_time = timeNextCourierArrivesAtOrder;
 		event = 2;
 	}
 	else{
         if (ordersPending.size() > 0){
-            if(timeCustomerArrives + orderTimes[count] < nextDecisionTime && timeCustomerArrives + orderTimes[count] < timeNextCourierArrivesAtOrder){
+            if(timeCustomerArrives + orderTimes[count] < ordersPending[0]->decisionTime && timeCustomerArrives + orderTimes[count] < timeNextCourierArrivesAtOrder){
                 event = 0;
                 curr_time = timeCustomerArrives + orderTimes[count];
-            }else if (nextDecisionTime < timeNextCourierArrivesAtOrder){
+            }else if (ordersPending[0]->decisionTime < timeNextCourierArrivesAtOrder){
                 event = 1;
-                curr_time = nextDecisionTime;
+                curr_time = ordersPending[0]->decisionTime;
             }else{
                 event = 2;
                 curr_time = timeNextCourierArrivesAtOrder;

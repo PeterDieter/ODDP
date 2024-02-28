@@ -76,7 +76,8 @@ private:
 	void chooseWarehouseForCourier(Courier* courier);
 
 	// Function that adds order to a vector of orders based on the (expected) arrival time
-	void AddOrderToVector(std::vector<Order*> & V, Order* orderToAdd);
+	void addOrderToVectorArrivalTime(std::vector<Order*> & V, Order* orderToAdd);
+	void addOrderToVectorDecisionTime(std::vector<Order*> & V, Order* orderToAdd);
 
 	double getTotalWaitingTime();
 	double getTotalDelays();
@@ -97,8 +98,8 @@ private:
 	void writeClientsStatsToFile(std::string filename);
 
 	// Functions that writes routes/orders and costs to file
-	void writeCostsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training);
-	void writeStatsToFile(std::vector<float> costs, std::vector<float> averageRejectionRateVector, std::vector<float> averageWaitingTime, std::vector<float> maxWaitingTime);
+	void writeCostsToFile(std::vector<float> costs, std::vector<float> averageDelayRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training);
+	void writeStatsToFile(std::vector<float> costs, std::vector<float> averageDelayRateVector, std::vector<float> averageWaitingTime, std::vector<float> maxWaitingTime);
 	void writeMatrixToFile(std::vector<std::vector<double>> matrix, std::string filename);
 	void writeCourierRoutesToFile(std::string fileNameRoutes, std::string fileNameOrders);
 	
