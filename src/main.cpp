@@ -14,8 +14,12 @@ int main(int argc, char * argv[])
   Data data(argv);
   std::cout << "----- Instance with " << data.nbClients << " Clients, " << data.nbWarehouses << " Warehouses -----"<< std::endl;
   
-  // In case of static Rebalancing, we use Gurobi to create such a static assignment
-  if (std::string(argv[3])=="staticAssignment"){
+  // In case of static Partitioning, we use Gurobi to create such a static partitioning
+  if (std::string(argv[3])=="staticPartitioning"){
+    if (std::string(argv[1]) == "instances/grid.txt"){
+        std::cout << "Error: Cannot apply Gurobi partitioning to grid instance" << std::endl;
+        std::exit(-1);
+    }
     WQAssign wqassign(&data, 900, 1, 1e-6, false);
     int init_mod = wqassign.init();
   }

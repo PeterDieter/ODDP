@@ -18,12 +18,17 @@ struct Picker;
 struct Order;
 struct Quadrant;
 
+struct Location
+{
+	double lat;
+	double lon;
+};
+
 // Structure of a Client, including its index, position
 struct Client
 {
 	int clientID;						// IDex of the client
-	double lat;							// Latitude
-	double lon;							// Longitude 
+	Location location;					// Location of the client
 	std::vector< int> nbOrders;			// the number of times the client ordered per hour
 	std::vector< int> waitingTimes;		// the waiting time per hour
 	long double averageWaitingTime; // Average time to serve orders of the client
@@ -44,8 +49,7 @@ struct Warehouse
 	std::vector< Order*> ordersAssigned;				// vector to orders that are assigned to the warehouse
 	std::vector< Quadrant*> assignedQuadrants; 			// vector of pointers to quadrants which are assigned to the warehouse
 	int currentNbCustomers;								// Current number of customers in the system
-	double lat;											// Latitude
-	double lon;											// Longitude 
+	Location location;									// Location of the warehouse
 };
 
 
@@ -70,10 +74,8 @@ struct Order
 // Structure of a route. This is stored mainly for plotting purposes later on
 struct Route
 {
-	double fromLat;					// From latitude
-	double fromLon;					// From longitude
-	double toLat;					// From latitude
-	double tolon;					// From longitude
+	Location fromLocation;			// From location
+	Location toLocation;			// To location
 	Client* client;					// Pointer to client
 	Warehouse* warehouse;			// Pointer to warehouse
 	int startTime;					// 

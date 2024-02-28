@@ -71,8 +71,8 @@ void Environment::initialize()
         Warehouse* newWarehouse = new Warehouse;
         warehouses.push_back(newWarehouse);
         newWarehouse->wareID = data->paramWarehouses[wID].wareID;
-        newWarehouse->lat = data->paramWarehouses[wID].lat;
-        newWarehouse->lon = data->paramWarehouses[wID].lon;
+        newWarehouse->location.lat = data->paramWarehouses[wID].location.lat;
+        newWarehouse->location.lon = data->paramWarehouses[wID].location.lon;
         newWarehouse->initialNbCouriers = data->paramWarehouses[wID].initialNbCouriers;
         newWarehouse->initialNbPickers = data->paramWarehouses[wID].initialNbPickers;
         newWarehouse->currentNbCustomers = 0;
@@ -169,13 +169,13 @@ void Environment::writeCourierRoutesToFile(std::string fileNameRoutes, std::stri
             for(int route = 0; route<c->assignedToOrders.size(); route++){
                 int counter = 0;
                 for(Order* o : c->assignedToOrders[route]){
-                    myfile2 << o->orderTime << " " << o->arrivalTime << " " << o->client->lat << " " << o->client->lon << " " << 1;
+                    myfile2 << o->orderTime << " " << o->arrivalTime << " " << o->client->location.lat << " " << o->client->location.lon << " " << 1;
                     myfile2 << std::endl;
                     if(counter == 0){
-                        myfile << c->assignedToOrders[route][0]->timeCourierLeavesToOrder << " " << c->assignedToOrders[route][0]->arrivalTime << " " << c->assignedToOrders[route][0]->arrivalTime + c->assignedToOrders[route][0]->serviceTimeAtClient  << " " << c->assignedToWarehouse->lat << " " << c->assignedToWarehouse->lon << " " << c->assignedToOrders[route][0]->client->lat  << " " << c->assignedToOrders[route][0]->client->lon;
+                        myfile << c->assignedToOrders[route][0]->timeCourierLeavesToOrder << " " << c->assignedToOrders[route][0]->arrivalTime << " " << c->assignedToOrders[route][0]->arrivalTime + c->assignedToOrders[route][0]->serviceTimeAtClient  << " " << c->assignedToWarehouse->location.lat << " " << c->assignedToWarehouse->location.lon << " " << c->assignedToOrders[route][0]->client->location.lat  << " " << c->assignedToOrders[route][0]->client->location.lon;
                         myfile << std::endl;
                     }else{
-                        myfile << c->assignedToOrders[route][counter]->timeCourierLeavesToOrder << " " << c->assignedToOrders[route][counter]->arrivalTime << " " << c->assignedToOrders[route][counter]->arrivalTime + c->assignedToOrders[route][counter]->serviceTimeAtClient << " " << c->assignedToOrders[route][counter-1]->client->lat << " " << c->assignedToOrders[route][counter-1]->client->lon << " " << c->assignedToOrders[route][counter]->client->lat  << " " << c->assignedToOrders[route][counter]->client->lon;
+                        myfile << c->assignedToOrders[route][counter]->timeCourierLeavesToOrder << " " << c->assignedToOrders[route][counter]->arrivalTime << " " << c->assignedToOrders[route][counter]->arrivalTime + c->assignedToOrders[route][counter]->serviceTimeAtClient << " " << c->assignedToOrders[route][counter-1]->client->location.lat << " " << c->assignedToOrders[route][counter-1]->client->location.lon << " " << c->assignedToOrders[route][counter]->client->location.lat  << " " << c->assignedToOrders[route][counter]->client->location.lon;
                         myfile << std::endl;
                     }
                     counter += 1;
@@ -183,7 +183,7 @@ void Environment::writeCourierRoutesToFile(std::string fileNameRoutes, std::stri
 
                 if (c->assignedToOrders[route].size() > 0){
                     int backAtDepotTime = c->assignedToOrders[route].back()->arrivalTime + c->assignedToOrders[route].back()->serviceTimeAtClient + data->travelTime.get(c->assignedToOrders[route].back()->client->clientID, c->assignedToWarehouse->wareID);
-                    myfile << c->assignedToOrders[route].back()->arrivalTime + c->assignedToOrders[route].back()->serviceTimeAtClient << " " << backAtDepotTime << " " << backAtDepotTime << " " << c->assignedToOrders[route].back()->client->lat  << " " << c->assignedToOrders[route].back()->client->lon << " " << c->assignedToWarehouse->lat << " " << c->assignedToWarehouse->lon;
+                    myfile << c->assignedToOrders[route].back()->arrivalTime + c->assignedToOrders[route].back()->serviceTimeAtClient << " " << backAtDepotTime << " " << backAtDepotTime << " " << c->assignedToOrders[route].back()->client->location.lat  << " " << c->assignedToOrders[route].back()->client->location.lon << " " << c->assignedToWarehouse->location.lat << " " << c->assignedToWarehouse->location.lon;
                     myfile << std::endl;
                 }
             }
@@ -365,7 +365,7 @@ void Environment::writeClientsStatsToFile(std::string filename){
 		{
             for (int hour = 0; hour<data->simulationTime; hour++){
                 // Here we print the order of customers that we visit 
-                myfile << client.lat << " " << client.lon << " " << hour << " " << client.nbOrders[hour] << " " << client.waitingTimes[hour];
+                myfile << client.location.lat << " " << client.location.lon << " " << hour << " " << client.nbOrders[hour] << " " << client.waitingTimes[hour];
                 myfile << std::endl;
             }
 
@@ -395,18 +395,18 @@ double Environment::getTotalDelays(){
     return sum/ orders.size();
 }
 
-int calculateDistance(double lat1, double long1, double lat2, double long2, bool grid) {
-    if(lat1 == lat2 && long1 == long2){
+int calculateDistance(Location loc1, Location loc2, bool grid) {
+    if(loc1.lat == loc2.lat && loc1.lon == loc2.lon){
         return 0;
     }else{
         if(!grid){
             double dist;
-            dist = sin(toRad(lat1)) * sin(toRad(lat2)) + cos(toRad(lat1)) * cos(toRad(lat2)) * cos(toRad(long1 - long2));
+            dist = sin(toRad(loc1.lat)) * sin(toRad(loc2.lat)) + cos(toRad(loc1.lat)) * cos(toRad(loc2.lat)) * cos(toRad(loc1.lon-loc2.lon));
             dist = acos(dist);
             dist = 6371 * dist * 1000 / 5;
             return int(dist);
         }else{
-            return int(abs(lat1 - lat2) + abs(long1 - long2)*10);
+            return int(abs(loc1.lat - loc2.lat) + abs(loc1.lon - loc2.lon)*10);
         }
 
     }
@@ -417,7 +417,7 @@ double Environment::insertOrderToCourierCosts(Order* newOrder, Courier* courier,
         int numberOfRoutes = courier->assignedToOrders.size()-1;
         if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable - currentTime) + newOrder->commissionTime){
             Order* lastOrder = courier->assignedToOrders[courier->assignedToOrders.size()-1].back();
-            double distance = calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon, gridInstance);
+            double distance = calculateDistance(lastOrder->client->location, newOrder->client->location, gridInstance);
             if (lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance > data->maxWaiting){
                 return lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance;
             }else{
@@ -463,7 +463,7 @@ void Environment::updateInformation(Order* newOrder, bool bundling)
                 newOrder->assignedCourier->assignedToOrders.push_back({newOrder});
             }else{
                 Order* lastOrder = newOrder->assignedCourier->assignedToOrders[numberOfRoutes].back();
-                newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->lat, lastOrder->client->lon, newOrder->client->lat, newOrder->client->lon, gridInstance);
+                newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->location, newOrder->client->location, gridInstance);
                 newOrder->timeCourierLeavesToOrder = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient;
                 newOrder->assignedCourier->assignedToOrders[numberOfRoutes].push_back(newOrder);
                 if (newOrder->assignedCourier->assignedToOrders[numberOfRoutes].size() == 1){
@@ -633,7 +633,7 @@ void Environment::simulate(char *argv[])
         simulation(0);
     }else if(std::string(argv[3])== "reassignment"){
         simulation(1);
-    }else if (std::string(argv[3])=="staticAssignment"){
+    }else if (std::string(argv[3])=="staticPartitioning"){
         simulation(2);
     }else{
         std::cerr<<"Method: " << argv[3] << " not found."<<std::endl;

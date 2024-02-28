@@ -108,7 +108,7 @@ Data::Data(char * argv[])
 					// Reading warehouse data
 					for (int i = 0; i < nbWarehouses; i++)
 					{
-						inputFile >> paramWarehouses[i].wareID >> paramWarehouses[i].lon >> paramWarehouses[i].lat >> paramWarehouses[i].initialNbCouriers >> paramWarehouses[i].initialNbPickers;
+						inputFile >> paramWarehouses[i].wareID >> paramWarehouses[i].location.lon >> paramWarehouses[i].location.lat >> paramWarehouses[i].initialNbCouriers >> paramWarehouses[i].initialNbPickers;
 						nbCouriers += paramWarehouses[i].initialNbCouriers;
 						nbPickers += paramWarehouses[i].initialNbPickers;
 					}
@@ -121,7 +121,7 @@ Data::Data(char * argv[])
 					// Reading client data
 					for (int i = 0; i < nbClients; i++)
 					{
-						inputFile >> paramClients[i].clientID >> paramClients[i].lon >> paramClients[i].lat;
+						inputFile >> paramClients[i].clientID >> paramClients[i].location.lon >> paramClients[i].location.lat;
 						paramClients[i].nbOrders.assign(hourlyArrivalRates.size(), 0);
 						paramClients[i].waitingTimes.assign(hourlyArrivalRates.size(), 0);
 					}

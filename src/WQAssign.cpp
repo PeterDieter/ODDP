@@ -328,8 +328,8 @@ void WQAssign::initialize_quadrants() {
 		// read position
 		curr_client = &m_params->paramClients[i];
 		curr_client->reached = true;		// init reached (can be changed to "false" by remove_unreachable_clients() )
-		lat = curr_client->lat;					// Latitude
-		lon = curr_client->lon;					// Longitude
+		lat = curr_client->location.lat;					// Latitude
+		lon = curr_client->location.lon;					// Longitude
 		
 		// calc x/y number in grid to get quadID
 		q_x = std::floor((lon - lonSW) / step_lon);
@@ -676,8 +676,8 @@ int WQAssign::solve_check_writesol (bool write_iter, bool quad_level) {
 	if ( ofile ) {
 		if ( !quad_level ) {
 			for (Client c : m_params->paramClients) {		    
-				double lat = c.lat;
-				double lon = c.lon;
+				double lat = c.location.lat;
+				double lon = c.location.lon;
 				double meanWaitingTime = c.averageWaitingTime;
 				fprintf(f,"%f %f %.2f %i\n",lat, lon, meanWaitingTime, iter_cnt_write-1);
 			}

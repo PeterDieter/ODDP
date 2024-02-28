@@ -38,4 +38,4 @@ where **instanceName** gives the path to the .txt file containing the instance i
 Currently, the following assigning strategies are available:
 1. nearestWarehouse: In this policy, we assign each order to the nearest warehouse. If order cannot be served on time, we reject.
 2. reassignment: We check if order can be assigned to any warehouse. We choose the warehouse with lowest waiting for the order.
-3. staticAssignment: Use Gurobi to partition the service region based on quadrants. 
+3. staticPartitioning: Use Gurobi to partition the service region based on quadrants. 
