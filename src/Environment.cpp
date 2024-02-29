@@ -30,7 +30,6 @@ void Environment::initialize()
     nbOrdersServed = 0;
     bundledOrders = 0;
     nextOrderBeingServed = nullptr;
-    bundle = true;
     timeStepSize = 1800;
     currentTime = 0;
     timeCustomerArrives = 0;
@@ -412,38 +411,6 @@ int calculateDistance(Location loc1, Location loc2, bool grid) {
     }
 }
 
-double Environment::insertOrderToCourierCosts(Order* newOrder, Courier* courier, bool bundle){
-    if (courier->assignedToOrders.size() > 0 && bundle){
-        int numberOfRoutes = courier->assignedToOrders.size()-1;
-        if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable - currentTime) + newOrder->commissionTime){
-            Order* lastOrder = courier->assignedToOrders[courier->assignedToOrders.size()-1].back();
-            double distance = calculateDistance(lastOrder->client->location, newOrder->client->location, gridInstance);
-            if (lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance > data->maxWaiting){
-                return lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance;
-            }else{
-                return distance;
-            }
-            
-        };
-    }
-    return (std::max(courier->timeWhenAvailable, std::max(currentTime, getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable) + newOrder->commissionTime) - currentTime) + data->travelTime.get(newOrder->client->clientID, courier->assignedToWarehouse->wareID);
-} 
-
-
-std::tuple<int, Courier*>  Environment::costsToWarehouse(Order* newOrder, Warehouse* war, bool bundle){
-    double costs = __DBL_MAX__;
-    double costsNew;
-    Courier* fastestAvailableCourier = war->couriersAssigned[0];
-    for (auto courier : war->couriersAssigned){
-        costsNew = insertOrderToCourierCosts(newOrder, courier, bundle);
-        if(costsNew < costs){
-            costs = costsNew;
-            fastestAvailableCourier = courier;
-        }
-    }
-    return std::make_tuple(costs, fastestAvailableCourier);
-}
-
 void Environment::updateInformation(Order* newOrder, bool bundling)
 {
     // First courier stuff
@@ -495,6 +462,37 @@ void Environment::updateInformation(Order* newOrder, bool bundling)
     newOrder->assignedWarehouse->currentNbCustomers += 1;
 }
 
+double Environment::insertOrderToCourierCosts(Order* newOrder, Courier* courier, bool bundle){
+    if (courier->assignedToOrders.size() > 0 && bundle){
+        int numberOfRoutes = courier->assignedToOrders.size()-1;
+        if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable - currentTime) + newOrder->commissionTime){
+            Order* lastOrder = courier->assignedToOrders[courier->assignedToOrders.size()-1].back();
+            double distance = calculateDistance(lastOrder->client->location, newOrder->client->location, gridInstance);
+            if (lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance > data->maxWaiting){
+                return lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance;
+            }else{
+                return distance;
+            }
+            
+        };
+    }
+    return (std::max(courier->timeWhenAvailable, std::max(currentTime, getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable) + newOrder->commissionTime) - currentTime) + data->travelTime.get(newOrder->client->clientID, courier->assignedToWarehouse->wareID);
+} 
+
+
+std::tuple<int, Courier*>  Environment::costsToWarehouse(Order* newOrder, Warehouse* war, bool bundle){
+    double costs = __DBL_MAX__;
+    double costsNew;
+    Courier* fastestAvailableCourier = war->couriersAssigned[0];
+    for (auto courier : war->couriersAssigned){
+        costsNew = insertOrderToCourierCosts(newOrder, courier, bundle);
+        if(costsNew < costs){
+            costs = costsNew;
+            fastestAvailableCourier = courier;
+        }
+    }
+    return std::make_tuple(costs, fastestAvailableCourier);
+}
 
 void Environment::chooseWarehouseForCourier(Courier* courier)
 {
@@ -506,7 +504,6 @@ void Environment::chooseWarehouseForCourier(Courier* courier)
 	ordersAssignedToCourierButNotServed.erase(ordersAssignedToCourierButNotServed.begin());
     // Update the order that will be served next
     updateOrderBeingServedNext();
-    //courier->assignedToOrders.erase(courier->assignedToOrders.begin());
     courier->assignedToWarehouse->currentNbCustomers -= 1;
 }
 
@@ -628,6 +625,8 @@ void Environment::simulate(char *argv[])
     if (std::string(argv[1]) == "instances/grid.txt"){
         gridInstance = true;
     }
+    bundle = true;
+    postpone = false;
 
     if(std::string(argv[3])== "nearestWarehouse"){
         simulation(0);
@@ -643,7 +642,12 @@ void Environment::simulate(char *argv[])
 
 int Environment::calcNewdecisionTime(Order* newOrder){
     // For now we just take the decision immediately
-    return currentTime;  
+    if (postpone){
+        return currentTime + 30;
+    }else{
+        return currentTime;
+    }
+
 }
 
 int Environment::calcTimeAndEvent(int count,int& event) {
@@ -676,32 +680,4 @@ int Environment::calcTimeAndEvent(int count,int& event) {
         }
 	}
     return curr_time;
-
-	// // get fastest available picker
-	// int time_picker = INT_MAX;
-	// //std::cout << "blabef" << std::endl;
-	// for ( size_t wh=0; wh < warehouses.size(); wh++) {
-	// 	Picker* tmp_picker = getFastestAvailablePicker(warehouses[wh]);
-	// 	int tmp_time = tmp_picker->timeWhenAvailable;
-	// 	//std::cout << "time_pavail[" << wh << "]= " << time_picker << std::endl;
-	// 	if ( time_picker > tmp_time - 0.5 ) {
-	// 		time_picker = tmp_time;
-	// 	}
-	// 	//std::cout << "bla" << wh << std::endl;
-	// }
-	// //std::cout << "time_picker= " << time_picker << std::endl;
-	// // set event for decision date
-	// if ( (timeCustomerArrives + orderTimes[count] < timeNextCourierArrivesAtOrder) && \
-	// 		 (curr_time <= data->simulationTime*timeStepSize)  && ((size_t) count < orderTimes.size() - 1) ) {
-	// 	if ( (ordersPending.size() > 0) && (currentTime + time_picker < curr_time) ) {
-	// 		event = 2;
-	// 		curr_time = currentTime + time_picker;
-	// 	}
-	// 	else {
-	// 		event = 0;
-	// 	}
-	// }
-	// else {
-	// 	event = 1;
-	// }
 }

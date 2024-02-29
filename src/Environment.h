@@ -31,7 +31,6 @@ public:
 private:
 	Data* data;													// Problem parameters
 	std::vector<Order*> orders;									// Vector of pointers to orders. containing information on each order
-	std::vector<Order*> ordersNewSimulation;
 	std::vector<Order*> ordersAssignedToCourierButNotServed;	// Vector of orders that have not been served yet
 	std::vector<Order*> ordersPending;							// vector of orders that have not been preocessed yet
 	std::vector<Warehouse*> warehouses;							// Vector of pointers containing information on each warehouse
@@ -43,16 +42,16 @@ private:
 	std::vector<int> clientsVector;								// Vector of clients that arrive. Same length as orderTimes vector. Will be created upon initialization
 	std::vector<int> timesToComission;							// Vector of times to comission. Same length as orderTimes vector. Will be created upon initialization
 	std::vector<int> timesToServe;								// Vector of times how long it takes to serve a client at his house. Same length as orderTimes vector. Will be created upon initialization
-	int currentTime;
-	int nbOrdersServed;
-	int timeCustomerArrives;
-	int timeNextCourierArrivesAtOrder;
-	int timePickerAvail;
-	int totalWaitingTime;
-	bool gridInstance;
-	bool bundle;
-	int bundledOrders;
-	int timeStepSize;
+	int currentTime;											// The current time
+	int nbOrdersServed;											// Number of orders served
+	int timeCustomerArrives;									// Time the last customer arrived
+	int timeNextCourierArrivesAtOrder;							// Time the next order is served
+	int totalWaitingTime;										// Tracking the total waiting time	
+	bool gridInstance;											// Bool if instance is a grid or a real city (distance measure depends on this)
+	bool bundle;												// Bool if bundling orders (one courier serving multiple orders in one trip) is allowed
+	bool postpone;												// Bool if we postpone the assignment decision
+	int bundledOrders;											// States the total number of bundled orders
+	int timeStepSize;											// As demand rates are given as a vector, this states how long one time step (1 element of the vector) is used (in seconds)
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);
@@ -106,17 +105,7 @@ private:
 	int drawFromExponentialDistribution(double lambda);
 	
 	// new member functions used for postponement
-	int calcTimeAndEvent(int,int&);//,const order*);
-	// Parameters:
-	//  - count				number of simulated customers
-	//  - event				address of integer indicating the eventtype
-	//  - 						(new customer: 							0,
-	//  - 						 courier arrives at order: 	1,
-	//  - 						 picker becomes available: 	2, TODO
-	//  - 						 postponement: 							3) TODO
-	// Return:
-	//  - curr_time		time of the event
-
+	int calcTimeAndEvent(int,int&);
 	int calcNewdecisionTime(Order* newOrder);
 	
 };
