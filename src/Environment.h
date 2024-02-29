@@ -63,12 +63,10 @@ private:
 	void initOrder(int currentTime, int id, Order* o);
 
 	// Functions that assigns order to a warehouse, picker and courier, respectively
-	void chooseClosestWarehouseForOrder(Order* newOrder);
-	void chooseWarehouseBasedOnQuadrant(Order* newOrder);;
+	void chooseClosestWarehouseForOrder(Order* newOrder, std::vector<int> relatedOrders);
+	void chooseWarehouseForOrderReassignment(Order* newOrder, std::vector<int> relatedOrders);
+	void chooseWarehouseBasedOnQuadrant(Order* newOrder, std::vector<int> relatedOrders);;
 	void updateInformation(Order* newOrder, bool bundling);
-
-	// Choose warehouse for an order, based on the Lower bound policy
-	void chooseWarehouseForOrderReassignment(Order* newOrder, bool bundle);
 
 	// Function that assigns a courier to the closest warehouse
 	void chooseWarehouseForCourier(Courier* courier);
@@ -85,8 +83,8 @@ private:
 
 	// Function that returns the fastest available courier assigned to a warehouse
 	Courier* getFastestAvailableCourier(Warehouse* warehouse);
-	double insertOrderToCourierCosts(Order* newOrder, Courier* courier, bool bundle);
-	std::tuple<int, Courier*>  costsToWarehouse(Order* newOrder, Warehouse* war, bool bundle);
+	double insertOrderToCourierCosts(Order* newOrder, Courier* courier);
+	std::tuple<int, Courier*>  costsToWarehouse(Order* newOrder, Warehouse* war);
 
 	// Function that updates the order that will be served next
 	void updateOrderBeingServedNext();
@@ -107,7 +105,12 @@ private:
 	// new member functions used for postponement
 	int calcTimeAndEvent(int,int&);
 	int calcNewdecisionTime(Order* newOrder);
-	
+	std::tuple<int, Courier*>  costsToWarehouseExclude(Order* newOrder, Warehouse* war, Picker* p, std::vector<int> couriersToExclude);
+	std::vector<int> getRelatedOrders(Order* order);
+	double insertOrderToCourierCostsExcludePickers(Order* newOrder, Courier* courier, Picker* p);
+	Picker* getFastestAvailablePickerExcludePickers(Warehouse* war, std::vector<int> excludePickers);
+	std::tuple<int, Picker*, Courier*>  postponeAssignment(Warehouse* war, std::vector<int> relatedOrders);
+
 };
 
 

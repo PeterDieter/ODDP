@@ -59,6 +59,8 @@ WQAssign::WQAssign(Data* _params, double _travel_cap, int _balance, double _eps,
 		m_env->set(GRB_IntParam_OutputFlag, 0);
 		m_env->set(GRB_IntParam_Threads, 1);
 		m_model = new GRBModel(m_env);
+		double mipGapLimit = 0.05;
+        m_model->set(GRB_DoubleParam_MIPGap, mipGapLimit);
 	//} catch (const GRBException* e) {
 	} catch (const GRBException& e) {
 		std::cout << "Gurobi error code: " << e.getErrorCode()<<std::endl;
