@@ -66,7 +66,7 @@ private:
 	void chooseClosestWarehouseForOrder(Order* newOrder, std::vector<int> relatedOrders);
 	void chooseWarehouseForOrderReassignment(Order* newOrder, std::vector<int> relatedOrders);
 	void chooseWarehouseBasedOnQuadrant(Order* newOrder, std::vector<int> relatedOrders);;
-	void updateInformation(Order* newOrder, bool bundling);
+	void updateInformation(Order* newOrder);
 
 	// Function that assigns a courier to the closest warehouse
 	void chooseWarehouseForCourier(Courier* courier);
@@ -105,11 +105,12 @@ private:
 	// new member functions used for postponement
 	int calcTimeAndEvent(int,int&);
 	int calcNewdecisionTime(Order* newOrder);
-	std::tuple<int, Courier*>  costsToWarehouseExclude(Order* newOrder, Warehouse* war, Picker* p, std::vector<int> couriersToExclude);
+	std::tuple<int, Courier*>  costsToWarehouseExclude(Order* newOrder, Warehouse* war, int timePickerAvailable, std::vector<int> couriersToExclude);
 	std::vector<int> getRelatedOrders(Order* order);
-	double insertOrderToCourierCostsExcludePickers(Order* newOrder, Courier* courier, Picker* p);
-	Picker* getFastestAvailablePickerExcludePickers(Warehouse* war, std::vector<int> excludePickers);
+	double insertOrderToCourierCostsExcludePickers(Order* newOrder, Courier* courier, int timePickerAvailable);
+	std::tuple<int, Picker*> getFastestAvailablePickerExcludePickers(Warehouse* war, std::vector<int> excludePickers);
 	std::tuple<int, Picker*, Courier*>  postponeAssignment(Warehouse* war, std::vector<int> relatedOrders);
+	std::tuple<int, Picker*, Courier*, Warehouse*>  postponeReAssignment(std::vector<int> relatedOrders);
 
 };
 

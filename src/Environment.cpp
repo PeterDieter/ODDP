@@ -130,7 +130,7 @@ void Environment::initOrder(int currentTime, int id, Order* o)
     o->client = &data->paramClients[clientsVector[o->orderID]];
     o->orderTime = currentTime;
     o->arrivalTime = 0;
-    o->serviceTimeAtClient = 120;//timesToServe[o->orderID]; // Follows expoential distribution
+    o->serviceTimeAtClient = timesToServe[o->orderID]; // Follows expoential distribution
 }
 
 int Environment::drawFromExponentialDistribution(double lambda)
@@ -305,19 +305,21 @@ Picker* Environment::getFastestAvailablePicker(Warehouse* war){
     return fastestAvailablePicker;
 }
 
-Picker* Environment::getFastestAvailablePickerExcludePickers(Warehouse* war, std::vector<int> excludePickers){
-    int timeAvailable = INT_MAX;
+std::tuple<int, Picker*>  Environment::getFastestAvailablePickerExcludePickers(Warehouse* war, std::vector<int> excludePickers){
+    int earliestAvailable = INT_MAX;
     Picker* fastestAvailablePicker = war->pickersAssigned[0];
     for (auto picker : war->pickersAssigned){
+        int timeWhenAvailable = picker->timeWhenAvailable;
         if(std::find(excludePickers.begin(), excludePickers.end(), picker->pickerID) != excludePickers.end()) {
-            continue;
+            timeWhenAvailable += data->meanCommissionTime;
         }
-        if(picker->timeWhenAvailable < timeAvailable){
-            timeAvailable = picker->timeWhenAvailable;
+        
+        if(timeWhenAvailable < earliestAvailable){
+            earliestAvailable = picker->timeWhenAvailable;
             fastestAvailablePicker = picker;
         }
     }
-    return fastestAvailablePicker;
+    return std::make_tuple(earliestAvailable, fastestAvailablePicker);
 }
 
 Courier* Environment::getFastestAvailableCourier(Warehouse* war){
@@ -426,10 +428,10 @@ int calculateDistance(Location loc1, Location loc2, bool grid) {
     }
 }
 
-void Environment::updateInformation(Order* newOrder, bool bundling)
+void Environment::updateInformation(Order* newOrder)
 {
     // First courier stuff
-    if (bundling){
+    if (bundle){
         if (newOrder->assignedCourier->assignedToOrders.size() == 0){// First we check if the courier already has a route planned
             int earliestTimeToLeaveDepot = std::max(currentTime + newOrder->commissionTime, std::max(newOrder->assignedCourier->timeWhenAvailable, newOrder->assignedPicker->timeWhenAvailable + newOrder->commissionTime));
             newOrder->timeCourierLeavesToOrder = earliestTimeToLeaveDepot;
@@ -510,21 +512,21 @@ std::tuple<int, Courier*>  Environment::costsToWarehouse(Order* newOrder, Wareho
 }
 
 
-double Environment::insertOrderToCourierCostsExcludePickers(Order* newOrder, Courier* courier, Picker* p){
+double Environment::insertOrderToCourierCostsExcludePickers(Order* newOrder, Courier* courier, int timePickerAvailable){
     if (courier->assignedToOrders.size() > 0 && bundle){
         int numberOfRoutes = courier->assignedToOrders.size()-1;
-        if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,p->timeWhenAvailable - currentTime) + newOrder->commissionTime){
+        if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,timePickerAvailable - currentTime) + newOrder->commissionTime){
             Order* lastOrder = courier->assignedToOrders[courier->assignedToOrders.size()-1].back();
             double distance = calculateDistance(lastOrder->client->location, newOrder->client->location, gridInstance);
             if (lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance > data->maxWaiting){
-                return lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance + data->maxWaiting;
+                return lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance + data->maxWaiting;;
             }else{
                 return distance;
             }
             
         };
     }
-    int waitingTime = std::max(courier->timeWhenAvailable, std::max(currentTime, p->timeWhenAvailable) + newOrder->commissionTime) - currentTime + data->travelTime.get(newOrder->client->clientID, courier->assignedToWarehouse->wareID);
+    int waitingTime = std::max(courier->timeWhenAvailable, std::max(currentTime, timePickerAvailable) + newOrder->commissionTime) - currentTime + data->travelTime.get(newOrder->client->clientID, courier->assignedToWarehouse->wareID);
     if( waitingTime > data->maxWaiting){
         return waitingTime + data->maxWaiting;
     }else{
@@ -532,7 +534,7 @@ double Environment::insertOrderToCourierCostsExcludePickers(Order* newOrder, Cou
     }
 }
 
-std::tuple<int, Courier*>  Environment::costsToWarehouseExclude(Order* newOrder, Warehouse* war, Picker* p, std::vector<int> couriersToExclude){
+std::tuple<int, Courier*>  Environment::costsToWarehouseExclude(Order* newOrder, Warehouse* war, int timePickerAvailable, std::vector<int> couriersToExclude){
     double costs = __DBL_MAX__;
     double costsNew;
     Courier* fastestAvailableCourier = war->couriersAssigned[0];
@@ -540,7 +542,7 @@ std::tuple<int, Courier*>  Environment::costsToWarehouseExclude(Order* newOrder,
         if(std::find(couriersToExclude.begin(), couriersToExclude.end(), courier->courierID) != couriersToExclude.end()) {
             continue;
         }
-        costsNew = insertOrderToCourierCostsExcludePickers(newOrder, courier, p);
+        costsNew = insertOrderToCourierCostsExcludePickers(newOrder, courier, timePickerAvailable);
         if(costsNew < costs){
             costs = costsNew;
             fastestAvailableCourier = courier;
@@ -560,14 +562,14 @@ std::tuple<int, Picker*, Courier*>  Environment::postponeAssignment(Warehouse* w
         Courier* courier0;
         Picker* picker0;
         for(int el: relatedOrders){
-            Picker* p = getFastestAvailablePickerExcludePickers(war, pickersToExclude);
-            auto [cost, courier] = costsToWarehouseExclude(ordersPending[el], war, p, excludedCouriers); 
+            auto [timeWhenPickerAvailable, picker] = getFastestAvailablePickerExcludePickers(war, pickersToExclude);
+            auto [cost, courier] = costsToWarehouseExclude(ordersPending[el], war, timeWhenPickerAvailable, excludedCouriers); 
             excludedCouriers.push_back(courier->courierID);
-            pickersToExclude.push_back(p->pickerID);
+            pickersToExclude.push_back(picker->pickerID);
             accumulatedCosts += cost;
             if(el == 0){
                 courier0 = courier;
-                picker0 = p;
+                picker0 = picker;
             }
         }
 
@@ -576,10 +578,59 @@ std::tuple<int, Picker*, Courier*>  Environment::postponeAssignment(Warehouse* w
             bestCourier = courier0;
             bestPicker = picker0;
         }
-
     }while (std::next_permutation(relatedOrders.begin(), relatedOrders.end()));
     
     return std::make_tuple(bestCosts, bestPicker, bestCourier);
+}
+
+std::tuple<int, Picker*, Courier*, Warehouse*>  Environment::postponeReAssignment(std::vector<int> relatedOrders){
+    int bestCosts = INT_MAX;
+    Courier* bestCourier;
+    Picker* bestPicker;
+    Warehouse* bestWarehouse;
+    do {
+        int accumulatedCosts = 0;
+        std::vector<int> excludedCouriers = {};
+        std::vector<int> pickersToExclude = {};
+        Courier* courier0;
+        Picker* picker0;
+        Warehouse* warehouse0;
+        for(int o: relatedOrders){
+            std::vector<int> indices(data->nbWarehouses);
+            std::vector< int> costs(data->nbWarehouses, INT16_MAX);
+            std::vector< Courier* > bestCouriersPerWarehouse;
+            std::vector< Picker* > bestPickersPerWarehouse;
+            int warehouseCounter = 0;
+            // For each warehouse, check the costs of assigning the order to the warehouse
+            for(Warehouse* w: warehouses){
+                auto [timeWhenPickerAvailable, picker] = getFastestAvailablePickerExcludePickers(w, pickersToExclude);
+                auto [cost, courier] = costsToWarehouseExclude(ordersPending[o], w, timeWhenPickerAvailable, excludedCouriers);
+                costs[warehouseCounter] = cost; 
+                bestCouriersPerWarehouse.push_back(courier);
+                bestPickersPerWarehouse.push_back(picker);
+                indices[warehouseCounter] = warehouseCounter;
+                warehouseCounter += 1;
+            }
+            std::sort(indices.begin(), indices.end(),[&](int A, int B) -> bool {return costs[A] < costs[B];});
+            excludedCouriers.push_back(bestCouriersPerWarehouse[indices[0]]->courierID);
+            pickersToExclude.push_back(bestPickersPerWarehouse[indices[0]]->pickerID);
+            accumulatedCosts += costs[indices[0]];
+            if(o == 0){
+                courier0 = bestCouriersPerWarehouse[indices[0]];
+                picker0 = bestPickersPerWarehouse[indices[0]];
+                warehouse0 = warehouses[indices[0]];
+            }
+        }
+
+        if (accumulatedCosts < bestCosts){
+            bestCosts = accumulatedCosts;
+            bestCourier = courier0;
+            bestPicker = picker0;
+            bestWarehouse = warehouse0;
+        }
+    }while (std::next_permutation(relatedOrders.begin(), relatedOrders.end()));
+    
+    return std::make_tuple(bestCosts, bestPicker, bestCourier, bestWarehouse);
 }
 
 
@@ -653,22 +704,10 @@ void Environment::chooseWarehouseForOrderReassignment(Order* newOrder, std::vect
         newOrder->assignedCourier = bestCouriersPerWarehouse[indices[0]];
         newOrder->assignedPicker = getFastestAvailablePicker(newOrder->assignedWarehouse);
     }else{
-        std::vector<int> indices(data->nbWarehouses);
-        std::vector< int> costs(data->nbWarehouses, INT16_MAX);
-        std::vector< Courier* > bestCouriersPerWarehouse;
-        int warehouseCounter = 0;
-        // For each warehouse, check the costs of assigning the order to the warehouse
-        for(Warehouse* w: warehouses){
-            auto [cost, picker, courier] = postponeAssignment(w, relatedOrders);
-            costs[warehouseCounter] = cost; 
-            bestCouriersPerWarehouse.push_back(courier);
-            indices[warehouseCounter] = warehouseCounter;
-            warehouseCounter += 1;
-        }
-        std::sort(indices.begin(), indices.end(),[&](int A, int B) -> bool {return costs[A] < costs[B];});
-        newOrder->assignedWarehouse = warehouses[indices[0]];
-        newOrder->assignedCourier = bestCouriersPerWarehouse[indices[0]];
-        newOrder->assignedPicker = getFastestAvailablePicker(newOrder->assignedWarehouse);
+        auto [cost, picker, courier, warehouse] = postponeReAssignment(relatedOrders);
+        newOrder->assignedWarehouse = warehouse;
+        newOrder->assignedCourier = courier;
+        newOrder->assignedPicker = picker;
     }
 }
 
@@ -709,7 +748,7 @@ void Environment::simulation(int policy)
                 }else if(policy == 2){
                     chooseWarehouseBasedOnQuadrant(order, getRelatedOrders(order));
                 }
-                updateInformation(order, bundle); 
+                updateInformation(order); 
                 addOrderToVectorArrivalTime(ordersAssignedToCourierButNotServed, order);
                 ordersPending.erase(ordersPending.begin());
             }else if ( event == 2 ) { // Or a courier arrives at an order
@@ -730,7 +769,7 @@ void Environment::simulation(int policy)
         running_delays += getTotalDelays();
         running_bundling += (float)bundledOrders/orders.size();
 				
-        if (epoch % 500 == 0) {
+        if (epoch % 250 == 0) {
 			std::printf("[%9.0d]\t %.4f\t\t %.4f\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter);
             runningCounter = 0.0;
             runnning_waiting = 0.0;
@@ -747,8 +786,12 @@ std::vector<int> Environment::getRelatedOrders(Order* order){
     int orderCounter = 0;
     std::vector<int> relatedOrders;
     for (Order* o : ordersPending){
-        if (calculateDistance(o->client->location, order->client->location, gridInstance) < 800){
-            relatedOrders.push_back(orderCounter);
+        if (calculateDistance(o->client->location, order->client->location, gridInstance) < 900){
+            if (relatedOrders.size() < 6){
+                relatedOrders.push_back(orderCounter);
+            }else{
+                break;
+            }
         }
         orderCounter += 1;
     }
@@ -758,11 +801,10 @@ std::vector<int> Environment::getRelatedOrders(Order* order){
 int Environment::calcNewdecisionTime(Order* newOrder){
     // For now we just take the decision immediately
     if (postpone){
-        return currentTime+5;
+        return currentTime + 10;
     }else{
         return currentTime;
     }
-
 }
 
 int Environment::calcTimeAndEvent(int count,int& event) {
