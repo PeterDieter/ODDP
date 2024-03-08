@@ -55,6 +55,7 @@ private:
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);
+	void tunePenalty();
 
 	// In this method we initialize the rest of the Data, such as warehouses, couriers, etc.
 	void initialize();
@@ -64,7 +65,7 @@ private:
 
 	// Functions that assigns order to a warehouse, picker and courier, respectively
 	void chooseClosestWarehouseForOrder(Order* newOrder, std::vector<int> relatedOrders);
-	void chooseWarehouseForOrderReassignment(Order* newOrder, std::vector<int> relatedOrders);
+	void chooseWarehouseForOrderReassignment(Order* newOrder, std::vector<int> relatedOrders, double penalty);
 	void chooseWarehouseBasedOnQuadrant(Order* newOrder, std::vector<int> relatedOrders);;
 	void updateInformation(Order* newOrder);
 
@@ -75,7 +76,8 @@ private:
 	void addOrderToVectorArrivalTime(std::vector<Order*> & V, Order* orderToAdd);
 	void addOrderToVectorDecisionTime(std::vector<Order*> & V, Order* orderToAdd);
 
-	double getTotalWaitingTime();
+	double getAverageDelayAllCustomers();
+	double getAverageDelayDelayedCustomers();
 	double getTotalDelays();
 
 	// Function that returns the fastest available picker at a warehouse
@@ -83,8 +85,8 @@ private:
 
 	// Function that returns the fastest available courier assigned to a warehouse
 	Courier* getFastestAvailableCourier(Warehouse* warehouse);
-	double insertOrderToCourierCosts(Order* newOrder, Courier* courier);
-	std::tuple<int, Courier*>  costsToWarehouse(Order* newOrder, Warehouse* war);
+	double insertOrderToCourierCosts(Order* newOrder, Courier* courier, double penalty);
+	std::tuple<int, Courier*>  costsToWarehouse(Order* newOrder, Warehouse* war, double penalty);
 
 	// Function that updates the order that will be served next
 	void updateOrderBeingServedNext();

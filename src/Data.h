@@ -48,7 +48,7 @@ struct Warehouse
 	std::vector< Order*> ordersNotAssignedToCourier;	// vector to orders that are assigned to the warehouse, but not to a courier yet
 	std::vector< Order*> ordersAssigned;				// vector to orders that are assigned to the warehouse
 	std::vector< Quadrant*> assignedQuadrants; 			// vector of pointers to quadrants which are assigned to the warehouse
-	int currentNbCustomers;								// Current number of customers in the system
+	int servedOrders;									// Number of served orders
 	Location location;									// Location of the warehouse
 };
 

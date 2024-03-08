@@ -4,9 +4,10 @@ import json
 import random
 import geopandas as gpd
 import utm
+import collections
 
 
-def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, pickersPerWarehouse: int=3, meanComissionTime: int=120, meanServiceTimeAtClient: int=60, gridStepSize: int=300):
+def create_instance(fileName: str, limit: int=900, totalCouriers: int=80, pickersPerWarehouse: int=3, meanComissionTime: int=120, meanServiceTimeAtClient: int=60, gridStepSize: int=300):
     """Create a .txt file of a problem instance
     Args:
         fileName (str): File in which we save the instance parameters
@@ -33,18 +34,28 @@ def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, 
     # clients = np.delete(clients, rndIdxs, axis=0)
     # matrix = np.delete(matrix, rndIdxs, axis=0)
 
-    with open('data/getirStores.json') as fp:
-        getirStores = json.load(fp)
-    warehouses = np.array([[val.get('longitude'),val.get('latitude')] for val in getirStores.values()])
-    warehouses = np.c_[warehouses, np.ones(len(warehouses))*couriersPerWarehouse, np.ones(len(warehouses))*pickersPerWarehouse]
-
     # Remove clients where distance to warehouses is over limit
     minValues = matrix.min(axis=1)
     notInLimit = np.where(minValues > limit)[0]
     clients = np.delete(clients, notInLimit, axis=0)
     matrix = np.delete(matrix, notInLimit, axis=0)
 
-     # Grid Stuff
+    with open('data/getirStores.json') as fp:
+        getirStores = json.load(fp)
+
+    warehouses = np.array([[val.get('longitude'),val.get('latitude')] for val in getirStores.values()])
+    warehouses = np.c_[warehouses, np.ones(len(warehouses)), np.ones(len(warehouses))*pickersPerWarehouse]
+    argminVec = matrix.argmin(axis=1)
+    closestWarehouseCounter = collections.Counter(argminVec)
+    distribution = np.ones(len(warehouses))
+    for key, value in closestWarehouseCounter.items():
+        distribution[key] = matrix[np.where(argminVec== key)[0],key].sum()
+    
+    for key, value in closestWarehouseCounter.items():
+        warehouses[key,2] = int(round(distribution[key]/sum(distribution)*totalCouriers))
+
+    print(warehouses)
+    # Grid Stuff
     points = gpd.read_file('data/Polygon_1200s/Polygon_1200s.shp')
     xmin, ymin, xmax, ymax = points.total_bounds
 
@@ -128,7 +139,7 @@ def create_instance(fileName: str, limit: int=900, couriersPerWarehouse: int=5, 
         f.write("EOF\n")
 
 
-def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerWarehouse: int=3, meanComissionTime: int=120, meanServiceTimeAtClient: int=60):
+def create_grid_instance(fileName: str, totalCouriers: int=20, pickersPerWarehouse: int=3, meanComissionTime: int=120, meanServiceTimeAtClient: int=60):
     """Create a .txt file of a problem instance
     Args:
         fileName (str): File in which we save the instance parameters
@@ -146,7 +157,6 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
                             [74,74]])
     clients = np.array([[i, j] for i in range(100) for j in range(100) if not ([i,j] == warehouses).all(1).any()])
 
-    warehouses = np.c_[warehouses, np.ones(len(warehouses))*couriersPerWarehouse, np.ones(len(warehouses))*pickersPerWarehouse]
     matrix = np.zeros((len(clients),len(warehouses)))
     clientCounter, warehouseCounter = 0, 0
     for client in clients:
@@ -157,6 +167,12 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
         warehouseCounter = 0
         clientCounter += 1
     matrix = matrix.astype(int)
+
+    warehouses = np.c_[warehouses, np.ones(len(warehouses)), np.ones(len(warehouses))*pickersPerWarehouse]
+    closestWarehouseCounter = collections.Counter(matrix.argmin(axis=1))
+    for key, value in closestWarehouseCounter.items():
+        warehouses[key,2] = int(round(value/len(matrix)*totalCouriers))
+    
 
     with open("instances/"+fileName+".txt", 'w') as f:
         f.write("\n".join([
@@ -196,5 +212,5 @@ def create_grid_instance(fileName: str, couriersPerWarehouse: int=5, pickersPerW
 
 
 if __name__ == "__main__":
-    create_instance(fileName = "zip", limit=900, couriersPerWarehouse=8, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=120, gridStepSize=800)
-    create_grid_instance(fileName = "grid", couriersPerWarehouse=11, pickersPerWarehouse=5, meanComissionTime=180, meanServiceTimeAtClient=120)
+    create_instance(fileName = "zip", limit=900, totalCouriers=80, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=120, gridStepSize=800)
+    create_grid_instance(fileName = "grid", totalCouriers=40, pickersPerWarehouse=4, meanComissionTime=180, meanServiceTimeAtClient=120)
