@@ -4,6 +4,7 @@ import json
 import random
 import geopandas as gpd
 import utm
+import itertools
 import collections
 
 
@@ -51,9 +52,33 @@ def create_instance(fileName: str, limit: int=900, totalCouriers: int=80, picker
     for key, value in closestWarehouseCounter.items():
         distribution[key] = matrix[np.where(argminVec== key)[0],key].sum()
     
+    summ = 0
+    shareVector = []
     for key, value in closestWarehouseCounter.items():
         warehouses[key,2] = int(round(distribution[key]/sum(distribution)*totalCouriers))
-
+        shareVector.append(distribution[key]/sum(distribution)*totalCouriers% 1)
+        summ += int(round(distribution[key]/sum(distribution)*totalCouriers))
+    
+    if(totalCouriers-summ > 0):
+        for i in range(len(shareVector)):
+            if shareVector[i] > 0.5:            
+                shareVector[i] = shareVector[i] - 1
+            sorted_list = sorted(shareVector, reverse=True)
+            res = [i for i,x in enumerate(shareVector) if x in itertools.islice(sorted_list, totalCouriers-summ)]
+        for j in res:
+            summ += 1
+            warehouses[j,2] += 1
+    elif(totalCouriers-summ < 0):
+        for i in range(len(shareVector)):
+            if shareVector[i] > 0.5:            
+                shareVector[i] = shareVector[i] - 1
+            sorted_list = sorted(shareVector, reverse=False)
+            res = [i for i,x in enumerate(shareVector) if x in itertools.islice(sorted_list, summ-totalCouriers)]
+        for j in res:
+            summ -= 1
+            warehouses[j,2] -= 1
+    
+    print(summ)
     print(warehouses)
     # Grid Stuff
     points = gpd.read_file('data/Polygon_1200s/Polygon_1200s.shp')

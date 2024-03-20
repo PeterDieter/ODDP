@@ -24,7 +24,7 @@ public:
 	Environment(Data* data);
 
 	// Function to perform a simulation
-	void simulate(char * argv[]);
+	void simulate(std::unordered_map<std::string, std::string> arguments);
 
 	const double EulerConstant = std::exp(1.0);
 
@@ -50,12 +50,12 @@ private:
 	bool gridInstance;											// Bool if instance is a grid or a real city (distance measure depends on this)
 	bool bundle;												// Bool if bundling orders (one courier serving multiple orders in one trip) is allowed
 	bool postpone;												// Bool if we postpone the assignment decision
+	bool courierRebalancing;									// Bool if we rebalance couriers.
 	int bundledOrders;											// States the total number of bundled orders
 	int timeStepSize;											// As demand rates are given as a vector, this states how long one time step (1 element of the vector) is used (in seconds)
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int policy);
-	void tunePenalty();
 
 	// In this method we initialize the rest of the Data, such as warehouses, couriers, etc.
 	void initialize();
@@ -94,6 +94,7 @@ private:
 	// Function that saves a route to the list of routes
 	void writeOrderStatsToClients();
 	void writeClientsStatsToFile(std::string filename);
+	std::vector<int> printCouriersAssigned();
 
 	// Functions that writes routes/orders and costs to file
 	void writeCostsToFile(std::vector<float> costs, std::vector<float> averageDelayRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training);
@@ -113,6 +114,8 @@ private:
 	std::tuple<int, Picker*> getFastestAvailablePickerExcludePickers(Warehouse* war, std::vector<int> excludePickers);
 	std::tuple<int, Picker*, Courier*>  postponeAssignment(Warehouse* war, std::vector<int> relatedOrders);
 	std::tuple<int, Picker*, Courier*, Warehouse*>  postponeReAssignment(std::vector<int> relatedOrders);
+
+	int sampleFromProbabilities(const std::vector<float>& probabilities);
 
 };
 

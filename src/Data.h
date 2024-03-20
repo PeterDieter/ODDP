@@ -145,7 +145,7 @@ struct Quadrant
 class Data
 {
 public:
-	Data(char * argv[]);
+	Data(int maxWaiting, std::string instance);
 	// Data of the problem instance
 	int nbClients;							// Number of clients
 	int nbWarehouses;						// Number of warehouses

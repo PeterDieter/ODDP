@@ -47,14 +47,14 @@ Quadrant::~Quadrant() {
 /***********************************************************************/
 
 
-Data::Data(char * argv[])
+Data::Data(int maxWaitingInput, std::string instance)
 {
 	rng = XorShift128(0);
 	nbClients = 0;
 	nbWarehouses = 0;
 	nbCouriers = 0;
 	nbPickers = 0;
-	maxWaiting = std::stoi(argv[2]);
+	maxWaiting = maxWaitingInput; //std::stoi(argv[2]);
 	meanCommissionTime = 180;
 	meanServiceTimeAtClient = 60;
 	paramClients = std::vector<Client>(40000); // 40000 is an upper limit, can be increase ofc
@@ -62,11 +62,11 @@ Data::Data(char * argv[])
 	//hourlyArrivalRates = {20,20,20,20,20,20,20,20,20,20,20};
 	//hourlyArrivalRates = {20,20,20,20,20,18,15,14,10,13,12};
 	//hourlyArrivalRates = {48,48};
-	hourlyArrivalRates = {22,23,24,22,23,24,25,24,22,21,19,18,14,9,12,18,24,24};
+	hourlyArrivalRates = {22,23,25,21,21,21,21,24,22,21,19,15,13,9,13,16,24,24};
 	//hourlyArrivalRates = {13,12,12,13,16,18,16,12,7,15,12,11,24};
-	//hourlyArrivalRates = {33,32,29,29,28,26,25,23,21,17,20,25,28,30};
+	//hourlyArrivalRates = {33,32,29,29,28,26,25,20,17,11,19,25,28,30};
 	std::string content, content2, content3;
-	std::ifstream inputFile(argv[1]);
+	std::ifstream inputFile(instance);
 	if (!inputFile) throw std::runtime_error("Could not find file instance");
 	if (inputFile.is_open())
 	{

@@ -26,16 +26,11 @@ make
 You can then execute the code with:
 
 ```
-./onlineAssignment instanceName maxWaiting methodName
+./onlineAssignment --instance=instanceName --maxWaitig=number --b --r --method=methodName
 ```
 
-where **instanceName** gives the path to the .txt file containing the instance information. The third parameter is the **max waiting time** in seconds (int). The **methodName** is a string that determines the method which will be applied for the assignment problem. For example:
+where **instanceName** gives the path to the .txt file containing the instance information. The maxWaiting parameter give the maximal waiting time in seconds (int). To enable bundling of customers to one courier trip, add --b. To apply the rebalancing policy, add --r. The **methodName** is a string that determines the method which will be applied for the assignment problem. The following assigning strategies are available:
 
-```
-./onlineAssignment instances/grid.txt 1800 nearestWarehouse
-```
-
-Currently, the following assigning strategies are available:
-1. nearestWarehouse: In this policy, we assign each order to the nearest warehouse. If order cannot be served on time, we reject.
-2. reassignment: We check if order can be assigned to any warehouse. We choose the warehouse with lowest waiting for the order.
-3. staticPartitioning: Use Gurobi to partition the service region based on quadrants. 
+1. n: In this policy, we assign each order to the nearest warehouse. If order cannot be served on time, we reject.
+2. r: We check if order can be assigned to any warehouse. We choose the warehouse with lowest waiting for the order.
+3. s: Use Gurobi to partition the service region based on quadrants. 
