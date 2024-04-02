@@ -80,6 +80,8 @@ private:
 	double getAverageDelayDelayedCustomers();
 	double getTotalDelays();
 
+	int calculateDistance(Location loc1, Location loc2);
+
 	// Function that returns the fastest available picker at a warehouse
 	Picker* getFastestAvailablePicker(Warehouse* warehouse);
 

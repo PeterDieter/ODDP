@@ -439,18 +439,18 @@ double Environment::getTotalDelays(){
     return sum/ orders.size();
 }
 
-int calculateDistance(Location loc1, Location loc2, bool grid) {
+int Environment::calculateDistance(Location loc1, Location loc2){
     if(loc1.lat == loc2.lat && loc1.lon == loc2.lon){
         return 0;
     }else{
-        if(!grid){
+        if(!gridInstance){
             double dist;
             dist = sin(toRad(loc1.lat)) * sin(toRad(loc2.lat)) + cos(toRad(loc1.lat)) * cos(toRad(loc2.lat)) * cos(toRad(loc1.lon-loc2.lon));
             dist = acos(dist);
             dist = 6371 * dist * 1000 / 5;
             return int(dist);
         }else{
-            return int(abs(loc1.lat - loc2.lat) + abs(loc1.lon - loc2.lon)*10);
+            return int(abs(loc1.lat - loc2.lat) + abs(loc1.lon - loc2.lon))*10;
         }
 
     }
@@ -475,7 +475,7 @@ void Environment::updateInformation(Order* newOrder)
                 newOrder->assignedCourier->assignedToOrders.push_back({newOrder});
             }else{
                 Order* lastOrder = newOrder->assignedCourier->assignedToOrders[numberOfRoutes].back();
-                newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->location, newOrder->client->location, gridInstance);
+                newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->location, newOrder->client->location);
                 newOrder->timeCourierLeavesToOrder = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient;
                 newOrder->assignedCourier->assignedToOrders[numberOfRoutes].push_back(newOrder);
                 if (newOrder->assignedCourier->assignedToOrders[numberOfRoutes].size() == 1){
@@ -512,7 +512,7 @@ double Environment::insertOrderToCourierCosts(Order* newOrder, Courier* courier,
         int numberOfRoutes = courier->assignedToOrders.size()-1;
         if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,getFastestAvailablePicker(courier->assignedToWarehouse)->timeWhenAvailable - currentTime) + newOrder->commissionTime){
             Order* lastOrder = courier->assignedToOrders[courier->assignedToOrders.size()-1].back();
-            double distance = calculateDistance(lastOrder->client->location, newOrder->client->location, gridInstance);
+            double distance = calculateDistance(lastOrder->client->location, newOrder->client->location);
             //if (lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime + distance > data->maxWaiting){
             if (penalty == -1){
                 return (lastOrder->arrivalTime + lastOrder->serviceTimeAtClient - currentTime) + distance;
@@ -549,7 +549,7 @@ double Environment::insertOrderToCourierCostsExcludePickers(Order* newOrder, Cou
         int numberOfRoutes = courier->assignedToOrders.size()-1;
         if (courier->assignedToOrders[numberOfRoutes].front()->timeCourierLeavesToOrder > currentTime + std::max(0,timePickerAvailable - currentTime) + newOrder->commissionTime){
             Order* lastOrder = courier->assignedToOrders[courier->assignedToOrders.size()-1].back();
-            double distance = calculateDistance(lastOrder->client->location, newOrder->client->location, gridInstance);
+            double distance = calculateDistance(lastOrder->client->location, newOrder->client->location);
             return (lastOrder->arrivalTime + lastOrder->serviceTimeAtClient) *(1-0.65)+ 0.65*distance + 0*data->maxWaiting;
         };
     }
@@ -757,7 +757,7 @@ std::vector<int> Environment::getRelatedOrders(Order* order){
     int orderCounter = 0;
     std::vector<int> relatedOrders;
     for (Order* o : ordersPending){
-        if (calculateDistance(o->client->location, order->client->location, gridInstance) < 1200){
+        if (calculateDistance(o->client->location, order->client->location) < 1200){
             if (relatedOrders.size() < 7){
                 relatedOrders.push_back(orderCounter);
             }else{
@@ -928,9 +928,10 @@ void Environment::simulation(int policy)
 void Environment::simulate(std::unordered_map<std::string, std::string> arguments)
 {   
     gridInstance = false;
-    if (arguments["instance"] == "instance/grid.txt"){
+    if (arguments["instance"].find("grid") != std::string::npos) {
         gridInstance = true;
     }
+
     bundle = false;
     postpone = false;
     courierRebalancing = false;
