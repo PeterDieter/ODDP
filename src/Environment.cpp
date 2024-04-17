@@ -661,7 +661,21 @@ std::tuple<int, Picker*, Courier*, Warehouse*>  Environment::postponeReAssignmen
 }
 
 
-void Environment::chooseWarehouseForCourier(Courier* courier)
+void Environment::chooseWarehouseForCourierStatic(Courier* courier)
+{
+    // Increment the number of order that have been served
+    nbOrdersServed ++;
+    totalWaitingTime += nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime;
+    int numberOfRoutes = courier->assignedToOrders.size()-1;
+    int numberOfCustomers = courier->assignedToOrders[numberOfRoutes].size()-1;
+    int arrivalTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->arrivalTime;
+    // Remove the order from the order that have not been served
+	ordersAssignedToCourierButNotServed.erase(ordersAssignedToCourierButNotServed.begin());
+    // Update the order that will be served next
+    updateOrderBeingServedNext();
+}
+
+void Environment::chooseWarehouseForCourierLevel(Courier* courier)
 {
     // Increment the number of order that have been served
     nbOrdersServed ++;
@@ -670,7 +684,34 @@ void Environment::chooseWarehouseForCourier(Courier* courier)
     int numberOfCustomers = courier->assignedToOrders[numberOfRoutes].size()-1;
     int arrivalTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->arrivalTime;
     float ratio = (float) courier->assignedToWarehouse->couriersAssigned.size()/courier->assignedToWarehouse->initialNbCouriers;
-    if(currentTime == arrivalTime && ratio > 0.85 && courierRebalancing){
+    if(currentTime == arrivalTime && ratio > 0.85){
+        std::vector<int> distancesToWarehouses = data->travelTime.getRow(nextOrderBeingServed->client->clientID);
+        int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
+        auto it = std::find_if(courier->assignedToWarehouse->couriersAssigned.begin(), courier->assignedToWarehouse->couriersAssigned.end(), [&](const Courier* obj) {
+            return obj->courierID == courier->courierID;
+        });
+        courier->assignedToWarehouse->couriersAssigned.erase(it);
+        courier->assignedToWarehouse = warehouses[indexClosestWarehouse];
+        warehouses[indexClosestWarehouse]->couriersAssigned.push_back(courier);
+        courier->timeWhenAvailable = currentTime + distancesToWarehouses[indexClosestWarehouse];
+    }
+
+    // Remove the order from the order that have not been served
+	ordersAssignedToCourierButNotServed.erase(ordersAssignedToCourierButNotServed.begin());
+    // Update the order that will be served next
+    updateOrderBeingServedNext();
+}
+
+void Environment::chooseWarehouseForCourierNearest(Courier* courier)
+{
+    // Increment the number of order that have been served
+    nbOrdersServed ++;
+    totalWaitingTime += nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime;
+    int numberOfRoutes = courier->assignedToOrders.size()-1;
+    int numberOfCustomers = courier->assignedToOrders[numberOfRoutes].size()-1;
+    int arrivalTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->arrivalTime;
+
+    if(currentTime == arrivalTime){
         std::vector<int> distancesToWarehouses = data->travelTime.getRow(nextOrderBeingServed->client->clientID);
         int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
         auto it = std::find_if(courier->assignedToWarehouse->couriersAssigned.begin(), courier->assignedToWarehouse->couriersAssigned.end(), [&](const Courier* obj) {
@@ -841,7 +882,7 @@ int Environment::sampleFromProbabilities(const std::vector<float>& probabilities
     return distribution(data->rng);
 }
 
-void Environment::simulation(int policy)
+void Environment::simulation(int AssignmentPolicy, int RebalancePolicy)
 {
     std::cout<<"----- Simulation starts -----"<<std::endl;
    
@@ -875,11 +916,11 @@ void Environment::simulation(int policy)
                 addOrderToVectorDecisionTime(ordersPending, newOrder); // add Order to ordersPending based on the decision time determined before
 			}else if (event == 1 ){ // Or we make a decision
                 Order* order = ordersPending.front();
-                if (policy==0){
+                if (AssignmentPolicy==0){
                     chooseClosestWarehouseForOrder(order, getRelatedOrders(order));
-                }else if(policy == 1){
+                }else if(AssignmentPolicy == 1){
                     chooseWarehouseForOrderReassignment(order, getRelatedOrders(order), 0.6);
-                }else if(policy == 2){
+                }else if(AssignmentPolicy == 2){
                     chooseWarehouseBasedOnQuadrant(order, getRelatedOrders(order));
                 }
                 updateInformation(order); 
@@ -888,7 +929,13 @@ void Environment::simulation(int policy)
             }else if ( event == 2 ) { // Or a courier arrives at an order
                 if (nextOrderBeingServed){
                     Courier* c = nextOrderBeingServed->assignedCourier;
-                    chooseWarehouseForCourier(c);
+                    if (RebalancePolicy==0){
+                        chooseWarehouseForCourierStatic(c);
+                    }else if(RebalancePolicy == 1){
+                        chooseWarehouseForCourierNearest(c);
+                    }else if(RebalancePolicy == 2){
+                        chooseWarehouseForCourierLevel(c);
+                    }
                 }
             }else { // Exception Catcher
                 std::cout << "Error: Unknown event" << std::endl;
@@ -934,7 +981,8 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
 
     bundle = false;
     postpone = false;
-    courierRebalancing = false;
+    int assignmentPolicy = 0;
+    int rebalancingPolicy = 0;
 
     if(arguments.find("b") != arguments.end()){
         std::cout<<"----- Customer Bundling: True -----"<<std::endl;
@@ -943,26 +991,36 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
         std::cout<<"----- Customer Bundling: False -----"<<std::endl;
     }
 
-     if(arguments.find("r") != arguments.end()){
-        std::cout<<"----- Courier Rebalancing: True -----"<<std::endl;
-        courierRebalancing = true;
+
+    if( arguments["RMethod"] == "s"){
+        std::cout<<"----- Rebalancing Method: Static -----"<<std::endl;
+        rebalancingPolicy = 0;
+    }else if(arguments["RMethod"]== "n"){
+        std::cout<<"----- Rebalancing Method:: Nearest warehouse-----"<<std::endl;
+        rebalancingPolicy = 1;
+    }else if (arguments["RMethod"]=="l"){
+        std::cout<<"----- Rebalancing Method:: Level -----"<<std::endl;
+        rebalancingPolicy = 2;
     }else{
-        std::cout<<"----- Courier Rebalancing: False -----"<<std::endl;
+        std::cerr<<"Rebalancing Method:: " << arguments["RMethod"] << " not found."<<std::endl;
+        std::exit(-1);
     }
 
-    if( arguments["method"] == "n"){
+    if( arguments["AMethod"] == "n"){
         std::cout<<"----- Assignment Method: NearestWarehouse -----"<<std::endl;
-        simulation(0);
-    }else if(arguments["method"]== "r"){
+        assignmentPolicy = 0;
+    }else if(arguments["AMethod"]== "r"){
         std::cout<<"----- Assignment Method:: Reassignment -----"<<std::endl;
-        simulation(1);
-    }else if (arguments["method"]=="s"){
+        assignmentPolicy = 1;
+    }else if (arguments["AMethod"]=="s"){
         std::cout<<"----- Assignment Method:: StaticPartitioning -----"<<std::endl;
-        simulation(2);
+        assignmentPolicy = 2;
     }else{
-        std::cerr<<"Assignment Method:: " << arguments["method"] << " not found."<<std::endl;
+        std::cerr<<"Assignment Method:: " << arguments["AMethod"] << " not found."<<std::endl;
+        std::exit(-1);
     }
 
+    simulation(assignmentPolicy, rebalancingPolicy);
 
 
 }

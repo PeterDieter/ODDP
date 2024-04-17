@@ -50,12 +50,11 @@ private:
 	bool gridInstance;											// Bool if instance is a grid or a real city (distance measure depends on this)
 	bool bundle;												// Bool if bundling orders (one courier serving multiple orders in one trip) is allowed
 	bool postpone;												// Bool if we postpone the assignment decision
-	bool courierRebalancing;									// Bool if we rebalance couriers.
 	int bundledOrders;											// States the total number of bundled orders
 	int timeStepSize;											// As demand rates are given as a vector, this states how long one time step (1 element of the vector) is used (in seconds)
 
 	// In this method, we reassign orders to other warehouses
-	void simulation(int policy);
+	void simulation(int AssignmentPolicy, int RebalancePolicy);
 
 	// In this method we initialize the rest of the Data, such as warehouses, couriers, etc.
 	void initialize();
@@ -70,7 +69,9 @@ private:
 	void updateInformation(Order* newOrder);
 
 	// Function that assigns a courier to the closest warehouse
-	void chooseWarehouseForCourier(Courier* courier);
+	void chooseWarehouseForCourierStatic(Courier* courier);
+	void chooseWarehouseForCourierNearest(Courier* courier);
+	void chooseWarehouseForCourierLevel(Courier* courier);
 
 	// Function that adds order to a vector of orders based on the (expected) arrival time
 	void addOrderToVectorArrivalTime(std::vector<Order*> & V, Order* orderToAdd);

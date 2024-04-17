@@ -34,8 +34,8 @@ int main(int argc, char * argv[])
 
 
   // Access the value of "city" if it exists
-  if (arguments.find("method") == arguments.end() || arguments.find("instance") == arguments.end() || arguments.find("maxWaiting") == arguments.end()) {
-      std::cout << "Method, Instance, or maxWaiting not provided. Please read the ReadMe for more information." << std::endl;
+  if (arguments.find("AMethod") == arguments.end() || arguments.find("RMethod") == arguments.end() ||  arguments.find("instance") == arguments.end() || arguments.find("maxWaiting") == arguments.end()) {
+      std::cout << "Assignment Method, Rebalancing Method, Instance, or maxWaiting not provided. Please read the ReadMe for more information." << std::endl;
       std::exit(-1);
   }
 
@@ -43,7 +43,7 @@ int main(int argc, char * argv[])
   Data data(std::stoi(arguments["maxWaiting"]), arguments["instance"]);
   std::cout << "----- Instance with " << data.nbClients << " Clients, " << data.nbWarehouses << " Warehouses -----"<< std::endl;
 
-  if (arguments["method"] == "s"){
+  if (arguments["AMethod"] == "s"){
       if (arguments["instance"] == "instances/grid.txt"){
         std::cout << "Error: Cannot apply Gurobi partitioning to grid instance" << std::endl;
         std::exit(-1);
