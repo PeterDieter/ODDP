@@ -26,17 +26,23 @@ make
 You can then execute the code with:
 
 ```
-./onlineAssignment --instance=instanceName --maxWaiting=number --b --r --method=methodName
+./onlineAssignment --instance=pathToInstance --maxWaiting=int --AMethod=AMethodName --RMethod=RMethodName --b
 ```
 
-where **instanceName** gives the path to the .txt file containing the instance information. The maxWaiting parameter give the maximal waiting time in seconds (int). To enable bundling of customers to one courier trip, add --b. To apply the rebalancing policy, add --r. The **methodName** is a string that determines the method which will be applied for the assignment problem. The following assigning strategies are available:
+where **instanceName** gives the path to the .txt file containing the instance information. The maxWaiting parameter give the maximal waiting time in seconds (int). To enable bundling of customers to one courier trip, add --b. To apply the rebalancing policy, add --r. The **AMethodName** is a string that determines the method which will be applied for the assignment problem. The following assigning strategies are available:
 
 1. n: In this policy, we assign each order to the nearest warehouse. If order cannot be served on time, we reject.
 2. r: We check if order can be assigned to any warehouse. We choose the warehouse with lowest waiting for the order.
 3. s: Use Gurobi to partition the service region based on quadrants. 
 
+Concerning rebalancing, RMethodName can take the following values:
+
+1. s: Static. No rebalancing occurs.
+2. n: Nearest: Always assign the courier to the nearest warehouse.
+3. l: Level: Assign the courier to the nearest warehouse but check that each warehouse remains at a certain level.
+
 For example:
 
 ```
-./onlineAssignment --instance=instances/zip.txt --maxWaiting=1200 --b --r --method=r
+./onlineAssignment --instance=instances/zip.txt --maxWaiting=1200 --AMethod=r --RMethod=s --b
 ```
