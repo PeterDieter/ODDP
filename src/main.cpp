@@ -39,6 +39,19 @@ int main(int argc, char * argv[])
       std::exit(-1);
   }
 
+  if (arguments["AMethod"] == "w"){
+    if (arguments.find("a") == arguments.end()|| arguments["a"]==""){
+        std::cout << "Error: Need alpha value between 0 and 1 for the weighted assignment method (float)." << std::endl;
+        std::exit(-1); 
+    }
+  }
+
+    if (arguments["maxWaiting"]==""){
+        std::cout << "Error: maxWaiting must be an integer above 0 (int)." << std::endl;
+        std::exit(-1); 
+    }
+
+
   std::cout << "----- READING DATA SET " << arguments["instance"]<< " -----" << std::endl;
   Data data(std::stoi(arguments["maxWaiting"]), arguments["instance"]);
   std::cout << "----- Instance with " << data.nbClients << " Clients, " << data.nbWarehouses << " Warehouses -----"<< std::endl;

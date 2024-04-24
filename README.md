@@ -1,6 +1,6 @@
 # The On-Demand Delivery Problem: Online Assignment of Orders to Warehouses and Couriers
 
-In the problem at hand, we operate multiple warehouse (depots) in a service region from which couriers start their trip to serve an order. When an order arrives, we need to assign it to a warehouse and a courier. The goal is to minimize the tardiness of customers.
+In the problem at hand, we operate multiple warehouse (depots) in a service region from which couriers start their trip to serve an order. When an order arrives, we need to assign it to a warehouse and a courier. When a courier serves the last order on his tour, he needs to be assigned to a warehouse to return to. The goal is to minimize the tardiness of customers.
 
 Visualization of the problem (made in [visualizeSimulation.py](python/visualizeSimulation.py)):
 
@@ -26,16 +26,18 @@ make
 You can then execute the code with:
 
 ```
-./onlineAssignment --instance=pathToInstance --maxWaiting=int --AMethod=AMethodName --RMethod=RMethodName --b
+./onlineAssignment --instance=pathToInstance --maxWaiting=int --AMethod=AMethodName --RMethod=RMethodName --b --a=float
 ```
 
-where **instanceName** gives the path to the .txt file containing the instance information. The maxWaiting parameter give the maximal waiting time in seconds (int). To enable bundling of customers to one courier trip, add --b. To apply the rebalancing policy, add --r. The **AMethodName** is a string that determines the method which will be applied for the assignment problem. The following assigning strategies are available:
+where **instanceName** gives the path to the .txt file containing the instance information. The maxWaiting parameter give the maximal waiting time in seconds (int). To enable bundling of customers to one courier trip, add --b. The **AMethod** is a string that determines the method which will be applied for the assignment problem. The following assigning strategies are available:
 
-1. n: In this policy, we assign each order to the nearest warehouse. If order cannot be served on time, we reject.
-2. r: We check if order can be assigned to any warehouse. We choose the warehouse with lowest waiting for the order.
+1. n: In this policy, we assign each order to the nearest warehouse and the earliest courier available.
+2. r: We check if order can be assigned to any warehouse. We choose the courier with lowest waiting for the order.
+2. w: We check if order can be assigned to any warehouse. We weigh waiting time and travel time, to anticipate future demand.
 3. s: Use Gurobi to partition the service region based on quadrants. 
 
-Concerning rebalancing, RMethodName can take the following values:
+If the weighted policy is chosen, a weighting value **a** needs to be chosen, that is a float between 0 and 1.
+Concerning rebalancing, **RMethod** can take the following values:
 
 1. s: Static. No rebalancing occurs.
 2. n: Nearest: Always assign the courier to the nearest warehouse.
@@ -44,5 +46,5 @@ Concerning rebalancing, RMethodName can take the following values:
 For example:
 
 ```
-./onlineAssignment --instance=instances/zip.txt --maxWaiting=1200 --AMethod=r --RMethod=s --b
+./onlineAssignment --instance=instances/zip.txt --maxWaiting=1200 --AMethod=w --RMethod=s --b --a=0.6
 ```

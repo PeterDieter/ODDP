@@ -4,6 +4,7 @@ import json
 import random
 import geopandas as gpd
 import utm
+import math
 import itertools
 import collections
 
@@ -55,14 +56,16 @@ def create_instance(fileName: str, limit: int=900, totalCouriers: int=80, picker
     summ = 0
     shareVector = []
     for key, value in closestWarehouseCounter.items():
-        warehouses[key,2] = int(round(distribution[key]/sum(distribution)*totalCouriers))
+        warehouses[key,2] = int(math.floor(distribution[key]/sum(distribution)*totalCouriers))
         shareVector.append(distribution[key]/sum(distribution)*totalCouriers% 1)
         summ += int(round(distribution[key]/sum(distribution)*totalCouriers))
     
+    print(summ, totalCouriers, shareVector)
+
     if(totalCouriers-summ > 0):
         for i in range(len(shareVector)):
-            if shareVector[i] > 0.5:            
-                shareVector[i] = shareVector[i] - 1
+            #if shareVector[i] > 0.5:            
+            #    shareVector[i] = shareVector[i] - 1
             sorted_list = sorted(shareVector, reverse=True)
             res = [i for i,x in enumerate(shareVector) if x in itertools.islice(sorted_list, totalCouriers-summ)]
         for j in res:
