@@ -46,6 +46,14 @@ int main(int argc, char * argv[])
     }
   }
 
+
+  if (arguments["RMethod"] == "l"){
+    if (arguments.find("beta") == arguments.end()|| arguments["beta"]==""){
+        std::cout << "Error: Need beta value between 0 and 1 for the level rebalancing method (float)." << std::endl;
+        std::exit(-1); 
+    }
+  }
+
     if (arguments["maxWaiting"]==""){
         std::cout << "Error: maxWaiting must be an integer above 0 (int)." << std::endl;
         std::exit(-1); 

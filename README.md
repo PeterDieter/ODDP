@@ -43,8 +43,10 @@ Concerning rebalancing, **RMethod** can take the following values:
 2. n: Nearest: Always assign the courier to the nearest warehouse.
 3. l: Level: Assign the courier to the nearest warehouse but check that each warehouse remains at a certain level.
 
+If the level policy is chosen, a level value **beta** needs to be chosen, that is a float between 0 and 1.
+
 For example:
 
 ```
-./onlineAssignment --instance=instances/zip.txt --maxWaiting=1200 --AMethod=w --RMethod=s --b --a=0.6
+./onlineAssignment --instance=instances/zip.txt --maxWaiting=1200 --AMethod=w --RMethod=s --b --a=0.6 --beta=0.9
 ```

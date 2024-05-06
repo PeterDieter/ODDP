@@ -54,7 +54,7 @@ private:
 	int timeStepSize;											// As demand rates are given as a vector, this states how long one time step (1 element of the vector) is used (in seconds)
 
 	// In this method, we reassign orders to other warehouses
-	void simulation(int AssignmentPolicy, int RebalancePolicy, double alpha);
+	void simulation(int AssignmentPolicy, int RebalancePolicy, float alpha, float beta);
 
 	// In this method we initialize the rest of the Data, such as warehouses, couriers, etc.
 	void initialize();
@@ -71,7 +71,7 @@ private:
 	// Function that assigns a courier to the closest warehouse
 	void chooseWarehouseForCourierStatic(Courier* courier);
 	void chooseWarehouseForCourierNearest(Courier* courier);
-	void chooseWarehouseForCourierLevel(Courier* courier);
+	void chooseWarehouseForCourierLevel(Courier* courier, float beta);
 
 	// Function that adds order to a vector of orders based on the (expected) arrival time
 	void addOrderToVectorArrivalTime(std::vector<Order*> & V, Order* orderToAdd);

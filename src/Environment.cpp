@@ -686,7 +686,7 @@ void Environment::chooseWarehouseForCourierStatic(Courier* courier)
     updateOrderBeingServedNext();
 }
 
-void Environment::chooseWarehouseForCourierLevel(Courier* courier)
+void Environment::chooseWarehouseForCourierLevel(Courier* courier, float beta)
 {
     // Increment the number of order that have been served
     nbOrdersServed ++;
@@ -695,7 +695,7 @@ void Environment::chooseWarehouseForCourierLevel(Courier* courier)
     int numberOfCustomers = courier->assignedToOrders[numberOfRoutes].size()-1;
     int arrivalTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->arrivalTime;
     float ratio = (float) courier->assignedToWarehouse->couriersAssigned.size()/courier->assignedToWarehouse->initialNbCouriers;
-    if(currentTime == arrivalTime && ratio > 0.95){
+    if(currentTime == arrivalTime && ratio > beta){
         std::vector<int> distancesToWarehouses = data->travelTime.getRow(nextOrderBeingServed->client->clientID);
         int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
         auto it = std::find_if(courier->assignedToWarehouse->couriersAssigned.begin(), courier->assignedToWarehouse->couriersAssigned.end(), [&](const Courier* obj) {
@@ -893,7 +893,7 @@ int Environment::sampleFromProbabilities(const std::vector<float>& probabilities
     return distribution(data->rng);
 }
 
-void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, double alpha)
+void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float alpha, float beta)
 {
     std::cout<<"----- Simulation starts -----"<<std::endl;
    
@@ -947,7 +947,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, double a
                     }else if(RebalancePolicy == 1){
                         chooseWarehouseForCourierNearest(c);
                     }else if(RebalancePolicy == 2){
-                        chooseWarehouseForCourierLevel(c);
+                        chooseWarehouseForCourierLevel(c, beta);
                     }
                 }
             }else { // Exception Catcher
@@ -996,7 +996,8 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
     postpone = false;
     int assignmentPolicy = 0;
     int rebalancingPolicy = 0;
-    double alpha = -1;
+    float alpha = -1;
+    float beta = 1;
 
     if(arguments.find("b") != arguments.end()){
         std::cout<<"----- Customer Bundling: True -----"<<std::endl;
@@ -1009,18 +1010,22 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
         alpha = std::stod(arguments["a"]);
     }
 
+    if(arguments.find("beta") != arguments.end()){
+        beta = std::stod(arguments["beta"]);
+    }
+
 
     if( arguments["RMethod"] == "s"){
         std::cout<<"----- Rebalancing Method: Static -----"<<std::endl;
         rebalancingPolicy = 0;
     }else if(arguments["RMethod"]== "n"){
-        std::cout<<"----- Rebalancing Method:: Nearest warehouse-----"<<std::endl;
+        std::cout<<"----- Rebalancing Method: Nearest warehouse-----"<<std::endl;
         rebalancingPolicy = 1;
     }else if (arguments["RMethod"]=="l"){
-        std::cout<<"----- Rebalancing Method:: Level -----"<<std::endl;
+        std::cout<<"----- Rebalancing Method: Level with beta of " << beta << " -----"<<std::endl;
         rebalancingPolicy = 2;
     }else{
-        std::cerr<<"Rebalancing Method:: " << arguments["RMethod"] << " not found."<<std::endl;
+        std::cerr<<"Rebalancing Method: " << arguments["RMethod"] << " not found."<<std::endl;
         std::exit(-1);
     }
 
@@ -1028,22 +1033,22 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
         std::cout<<"----- Assignment Method: NearestWarehouse -----"<<std::endl;
         assignmentPolicy = 0;
     }else if (arguments["AMethod"]=="r"){
-        std::cout<<"----- Assignment Method:: Reassignment -----"<<std::endl;
+        std::cout<<"----- Assignment Method: Reassignment -----"<<std::endl;
         assignmentPolicy = 1;
     }
     else if(arguments["AMethod"]== "w"){
-        std::cout<<"----- Assignment Method:: Weighted Reassignment -----"<<std::endl;
+        std::cout<<"----- Assignment Method: Weighted Reassignment with alpha of " << alpha << " -----"<<std::endl;
         assignmentPolicy = 2;
     }
     else if (arguments["AMethod"]=="s"){
-        std::cout<<"----- Assignment Method:: StaticPartitioning -----"<<std::endl;
+        std::cout<<"----- Assignment Method: StaticPartitioning -----"<<std::endl;
         assignmentPolicy = 3;
     }else{
         std::cerr<<"Assignment Method:: " << arguments["AMethod"] << " not found."<<std::endl;
         std::exit(-1);
     }
 
-    simulation(assignmentPolicy, rebalancingPolicy, alpha);
+    simulation(assignmentPolicy, rebalancingPolicy, alpha, beta);
 
 
 }
