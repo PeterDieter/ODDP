@@ -62,7 +62,7 @@ Data::Data(int maxWaitingInput, std::string instance)
 	//hourlyArrivalRates = {20,20,20,20,20,20,20,20,20,20,20};
 	//hourlyArrivalRates = {20,20,20,20,20,18,15,14,10,13,12};
 	//hourlyArrivalRates = {48,48};
-	hourlyArrivalRates = {22,23,25,21,21,21,21,24,22,21,19,15,13,9,13,16,24,24};
+	hourlyArrivalRates = {30,27,22,20,16,12,14,20,21,19,15,16,14,12,9,14,16};
 	//hourlyArrivalRates = {13,12,12,13,16,18,16,12,7,15,12,11,24};
 	//hourlyArrivalRates = {33,32,29,29,28,26,25,20,17,11,19,25,28,30};
 	std::string content, content2, content3;

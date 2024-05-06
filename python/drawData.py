@@ -25,7 +25,7 @@ def plotData(clients, warehouses, limit):
             marker=dict(
                 symbol = "circle",
                 size=23,
-                color='green',
+                color='black',
                 opacity=0.8,
             ),
             textposition='top right',

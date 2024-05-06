@@ -30,7 +30,7 @@ void Environment::initialize()
     nbOrdersServed = 0;
     bundledOrders = 0;
     nextOrderBeingServed = nullptr;
-    timeStepSize = 1800;
+    timeStepSize = 3600;
     currentTime = 0;
     timeCustomerArrives = 0;
     timeNextCourierArrivesAtOrder = INT_MAX;
@@ -107,6 +107,7 @@ void Environment::initialize()
     int currTime = 0;
     int nextTime;
     while (currTime < data->simulationTime*timeStepSize){
+        //std::cout<<data->hourlyArrivalRates[currTime/timeStepSize]*2.5<<std::endl;
         nextTime = drawFromExponentialDistribution(data->hourlyArrivalRates[currTime/timeStepSize]);
         currTime += nextTime;
         orderTimes.push_back(nextTime);
@@ -122,14 +123,14 @@ void Environment::initialize()
 void Environment::initOrder(int currentTime, int id, Order* o)
 {
     o->orderID = id;
-    o->commissionTime = timesToComission[o->orderID]; // Follows expoential distribution
+    o->commissionTime = drawFromNormalDistribution(180,30);//180;//timesToComission[o->orderID]; // Follows expoential distribution
     o->assignedCourier = nullptr;
     o->assignedPicker = nullptr;
     o->assignedWarehouse = nullptr;
     o->client = &data->paramClients[clientsVector[o->orderID]];
     o->orderTime = currentTime;
     o->arrivalTime = 0;
-    o->serviceTimeAtClient = timesToServe[o->orderID]; // Follows expoential distribution
+    o->serviceTimeAtClient = drawFromNormalDistribution(120,20);//120;//timesToServe[o->orderID]; // Follows expoential distribution
 }
 
 int Environment::drawFromExponentialDistribution(double lambda)
@@ -138,6 +139,15 @@ int Environment::drawFromExponentialDistribution(double lambda)
     double lambdaInv = 1/lambda;
     std::exponential_distribution<double> exp (lambdaInv);
     return round(exp.operator() (data->rng));
+}
+
+
+int Environment::drawFromNormalDistribution(float mean, float stdv){
+    std::normal_distribution d{mean, stdv};
+
+
+    // draw a sample from the normal distribution and round it to an integer
+    return int(d(data->rng));
 }
 
 int factorial(int n)
@@ -892,7 +902,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, double a
     double running_delays = 0.0;
     double running_bundling = 0.0;
     int totalOrdersServed = 0;
-    int nbEpochs = 3000;
+    int nbEpochs = 1000;
     std::vector<int> servedVector(data->nbWarehouses, 0);
     std::vector<int> currentCourierDistribution(data->nbWarehouses, 0);
     std::vector<int> courierDistribution(data->nbWarehouses, 0);
@@ -960,8 +970,8 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, double a
         for (int i = 0; i < currentCourierDistribution.size(); ++i) {
             courierDistribution[i] += currentCourierDistribution[i];
         }
-        
-        if (epoch % 500 == 0) {
+        //std::cout<<orders.size()<<std::endl;
+        if (epoch % 200 == 0) {
 			std::printf("[%9.0d]\t %.4f\t\t %.4f\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter);
             runningCounter = 0.0;
             runnning_waiting = 0.0;

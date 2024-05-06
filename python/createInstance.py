@@ -241,4 +241,4 @@ def create_grid_instance(fileName: str, totalCouriers: int=20, pickersPerWarehou
 
 if __name__ == "__main__":
     create_instance(fileName = "zip", limit=900, totalCouriers=80, pickersPerWarehouse=3, meanComissionTime=180, meanServiceTimeAtClient=120, gridStepSize=800)
-    create_grid_instance(fileName = "grid", totalCouriers=40, pickersPerWarehouse=4, meanComissionTime=180, meanServiceTimeAtClient=120)
+    create_grid_instance(fileName = "grid", totalCouriers=40, pickersPerWarehouse=5, meanComissionTime=180, meanServiceTimeAtClient=120)

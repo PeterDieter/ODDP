@@ -105,8 +105,9 @@ private:
 	void writeMatrixToFile(std::vector<std::vector<double>> matrix, std::string filename);
 	void writeCourierRoutesToFile(std::string fileNameRoutes, std::string fileNameOrders);
 	
-	// Function to draw an inter arrival time based on rate specified in data
+	// Functions to draw an integers
 	int drawFromExponentialDistribution(double lambda);
+	int drawFromNormalDistribution(float mean, float stdv);
 	
 	// new member functions used for postponement
 	int calcTimeAndEvent(int,int&);
