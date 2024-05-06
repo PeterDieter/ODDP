@@ -29,6 +29,8 @@ void Environment::initialize()
     totalWaitingTime = 0;
     nbOrdersServed = 0;
     bundledOrders = 0;
+    nbOrdersNotAssignedToNearest = 0;
+    nbRebalanced = 0;
     nextOrderBeingServed = nullptr;
     timeStepSize = 3600;
     currentTime = 0;
@@ -689,6 +691,7 @@ void Environment::chooseWarehouseForCourierStatic(Courier* courier)
 void Environment::chooseWarehouseForCourierLevel(Courier* courier, float beta)
 {
     // Increment the number of order that have been served
+    int wareIDInitial = courier->assignedToWarehouse->wareID;
     nbOrdersServed ++;
     totalWaitingTime += nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime;
     int numberOfRoutes = courier->assignedToOrders.size()-1;
@@ -711,6 +714,12 @@ void Environment::chooseWarehouseForCourierLevel(Courier* courier, float beta)
 	ordersAssignedToCourierButNotServed.erase(ordersAssignedToCourierButNotServed.begin());
     // Update the order that will be served next
     updateOrderBeingServedNext();
+
+    if (courier->assignedToWarehouse->wareID != wareIDInitial){
+        nbRebalanced += 1;
+    }
+
+
 }
 
 void Environment::chooseWarehouseForCourierNearest(Courier* courier)
@@ -802,6 +811,12 @@ void Environment::chooseWarehouseForOrderReassignment(Order* newOrder, std::vect
         newOrder->assignedCourier = courier;
         newOrder->assignedPicker = picker;
     }
+    std::vector<int> distancesToWarehouses = data->travelTime.getRow(newOrder->client->clientID);
+    int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
+    if (newOrder->assignedWarehouse->wareID != warehouses[indexClosestWarehouse]->wareID){
+        nbOrdersNotAssignedToNearest += 1;
+    }
+    
 }
 
 
@@ -901,13 +916,15 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
     double runnning_waiting = 0.0;
     double running_delays = 0.0;
     double running_bundling = 0.0;
+    double running_rebalancingOperations = 0.0;
+    double running_notNearestAssignments = 0.0;
     int totalOrdersServed = 0;
     int nbEpochs = 1000;
     std::vector<int> servedVector(data->nbWarehouses, 0);
     std::vector<int> currentCourierDistribution(data->nbWarehouses, 0);
     std::vector<int> courierDistribution(data->nbWarehouses, 0);
 		
-	std::printf("[Iteration]\t Delayed orders\t Average delay\t Average percentage bundled\n");
+	std::printf("[Iteration]\t Delayed orders\t Average delay\t Average percentage bundled\t Average percentage of reassigned orders\t Average percentage of reassigned couriers\n");
     for (int epoch = 1; epoch <= nbEpochs; epoch++) {
         // Initialize data structures
         initialize();
@@ -962,6 +979,8 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
         runnning_waiting += getAverageDelayAllCustomers();
         running_delays += getTotalDelays();
         running_bundling += (float)bundledOrders/orders.size();
+        running_notNearestAssignments += (float)nbOrdersNotAssignedToNearest/orders.size();
+        running_rebalancingOperations += (float)nbRebalanced/orders.size();
         for(Warehouse* w: warehouses){
             servedVector[w->wareID] += w->servedOrders;
         }
@@ -972,11 +991,13 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
         }
         //std::cout<<orders.size()<<std::endl;
         if (epoch % 200 == 0) {
-			std::printf("[%9.0d]\t %.4f\t\t %.4f\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter);
+			std::printf("[%9.0d]\t %.4f\t\t %.4f\t\t %.4f\t\t\t\t %.4f\t\t\t\t\t\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter, running_notNearestAssignments/runningCounter, running_rebalancingOperations/runningCounter);
             runningCounter = 0.0;
             runnning_waiting = 0.0;
             running_delays = 0.0;
             running_bundling = 0.0;
+            running_rebalancingOperations = 0.0;
+            running_notNearestAssignments = 0.0;
         }
         //writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
         //std::cout<<epoch<<std::endl;

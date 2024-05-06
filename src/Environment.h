@@ -52,6 +52,8 @@ private:
 	bool postpone;												// Bool if we postpone the assignment decision
 	int bundledOrders;											// States the total number of bundled orders
 	int timeStepSize;											// As demand rates are given as a vector, this states how long one time step (1 element of the vector) is used (in seconds)
+	int nbOrdersNotAssignedToNearest;							// Number of orders not assigned to the nearest Warehouse
+    int nbRebalanced;											// Number of couriers assigned to different warehouse
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int AssignmentPolicy, int RebalancePolicy, float alpha, float beta);
