@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdio>
 #include <random>
+#include <filesystem>
 
 #include "Data.h"
 #include "Matrix.h"
@@ -228,31 +229,6 @@ void Environment::writeCostsToFile(std::vector<float> costs, std::vector<float> 
 	else std::cout << "----- IMPOSSIBLE TO OPEN: " << fileName << std::endl;
 }
 
-
-void Environment::writeStatsToFile(std::vector<float> costs, std::vector<float> averageDelayRateVector, std::vector<float> averageWaitingTime, std::vector<float> maxWaitingTime){
-    std::string fileName;
-    fileName = "data/experimentData/trainingData/statsData_" + std::to_string(data->maxWaiting) +".txt";
-   
- 
-	std::cout << "----- WRITING COST VECTOR IN : " << fileName << std::endl;
-	std::ofstream myfile(fileName);
-	if (myfile.is_open())
-	{
-        int _i = 0;
-        myfile << "TotalCosts " << "DelayRate " <<"MeanWaitingTime " << "MaxWaitingTime ";
-        myfile << std::endl;
-		for (auto cost : costs)
-		{
-            // Here we print the order of customers that we visit 
-            myfile << cost << " " << averageDelayRateVector[_i]<< " " << averageWaitingTime[_i]<< " " << maxWaitingTime[_i];
-            myfile << std::endl;
-            _i += 1;
-		}
-        myfile.close();
-	}
-	else std::cout << "----- IMPOSSIBLE TO OPEN: " << fileName << std::endl;
-}
-
 void Environment::writeMatrixToFile(std::vector<std::vector<double>> matrix, std::string filename) {
     std::ofstream outputFile(filename);
 
@@ -416,7 +392,24 @@ void Environment::writeClientsStatsToFile(std::string filename){
 		}
 	}
 	else std::cout << "----- IMPOSSIBLE TO OPEN: " << filename << std::endl;    
-    
+}
+
+void Environment::writeStatsToFile(std::string filename, double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers){
+    bool exist = std::filesystem::exists(filename);
+    //appendFileToWorkWith.open(filename, std::fstream::in | std::fstream::out | std::fstream::app);
+    if (!exist) { // Write header only if file doesn't exist or is empty
+        std::ofstream myfile(filename);
+        myfile << "percDelayed" << ";" << "averageDelay" << ";" << "percBundled" << ";" << "percReassignedOrders" << ";" << "percReassignedCouriers" << std::endl;
+        myfile << percDelayed << ";" << averageDelay << ";" << percBundled << ";" << percReassignedOrders << ";" << percReassignedCouriers << std::endl;
+        myfile.close();
+    }else{
+        std::ofstream myfile(filename, std::ios_base::app); // Open file in append mode
+        // Write statistics
+        myfile << percDelayed << ";" << averageDelay << ";" << percBundled << ";" << percReassignedOrders << ";" << percReassignedCouriers << std::endl;
+        myfile.close();
+    }
+
+  
 }
 
 double Environment::getAverageDelayAllCustomers(){
@@ -919,7 +912,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
     double running_rebalancingOperations = 0.0;
     double running_notNearestAssignments = 0.0;
     int totalOrdersServed = 0;
-    int nbEpochs = 1000;
+    int nbEpochs = 500;
     std::vector<int> servedVector(data->nbWarehouses, 0);
     std::vector<int> currentCourierDistribution(data->nbWarehouses, 0);
     std::vector<int> courierDistribution(data->nbWarehouses, 0);
@@ -989,7 +982,9 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
         for (int i = 0; i < currentCourierDistribution.size(); ++i) {
             courierDistribution[i] += currentCourierDistribution[i];
         }
-        //std::cout<<orders.size()<<std::endl;
+        
+        writeStatsToFile("statistics.txt", getTotalDelays(), getAverageDelayAllCustomers(), (float)bundledOrders/orders.size(), (float)nbOrdersNotAssignedToNearest/orders.size(), (float)nbRebalanced/orders.size());
+        
         if (epoch % 200 == 0) {
 			std::printf("[%9.0d]\t %.4f\t\t %.4f\t\t %.4f\t\t\t\t %.4f\t\t\t\t\t\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter, running_notNearestAssignments/runningCounter, running_rebalancingOperations/runningCounter);
             runningCounter = 0.0;
@@ -1000,8 +995,8 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
             running_notNearestAssignments = 0.0;
         }
         //writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
-        //std::cout<<epoch<<std::endl;
     }
+   
     //writeClientsStatsToFile("clientStatistics_CFA.txt");
     std::cout<<"----- Simulations finished -----"<<std::endl;
 }

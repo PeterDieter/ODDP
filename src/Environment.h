@@ -99,6 +99,7 @@ private:
 	// Function that saves a route to the list of routes
 	void writeOrderStatsToClients();
 	void writeClientsStatsToFile(std::string filename);
+	void writeStatsToFile(std::string filename, double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers);
 	std::vector<int> printCouriersAssigned();
 
 	// Functions that writes routes/orders and costs to file
