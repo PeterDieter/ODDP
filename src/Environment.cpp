@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <random>
 #include <filesystem>
+#include <unordered_map>
 
 #include "Data.h"
 #include "Matrix.h"
