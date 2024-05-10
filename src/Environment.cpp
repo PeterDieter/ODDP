@@ -395,7 +395,11 @@ void Environment::writeClientsStatsToFile(std::string filename){
 	else std::cout << "----- IMPOSSIBLE TO OPEN: " << filename << std::endl;    
 }
 
-void Environment::writeStatsToFile(std::string filename, double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers){
+void Environment::writeStatsToFile(double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers){
+    std::string bundleString = bundle ? "true" : "false";
+    std::string gridInstanceString = gridInstance ? "true" : "false";
+    std::string maxWaitingString = std::to_string(data->maxWaiting);
+    std::string filename = "statistics/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod + "_" + bundleString + "_" + alphaString + "_" + betaString + ".txt";
     bool exist = std::filesystem::exists(filename);
     //appendFileToWorkWith.open(filename, std::fstream::in | std::fstream::out | std::fstream::app);
     if (!exist) { // Write header only if file doesn't exist or is empty
@@ -984,7 +988,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
             courierDistribution[i] += currentCourierDistribution[i];
         }
         
-        writeStatsToFile("statistics.txt", getTotalDelays(), getAverageDelayAllCustomers(), (float)bundledOrders/orders.size(), (float)nbOrdersNotAssignedToNearest/orders.size(), (float)nbRebalanced/orders.size());
+        writeStatsToFile(getTotalDelays(), getAverageDelayAllCustomers(), (float)bundledOrders/orders.size(), (float)nbOrdersNotAssignedToNearest/orders.size(), (float)nbRebalanced/orders.size());
         
         if (epoch % 200 == 0) {
 			std::printf("[%9.0d]\t %.4f\t\t %.4f\t\t %.4f\t\t\t\t %.4f\t\t\t\t\t\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter, running_notNearestAssignments/runningCounter, running_rebalancingOperations/runningCounter);
@@ -1035,12 +1039,15 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
     if( arguments["RMethod"] == "s"){
         std::cout<<"----- Rebalancing Method: Static -----"<<std::endl;
         rebalancingPolicy = 0;
+        rebalancingMethod = "s";
     }else if(arguments["RMethod"]== "n"){
         std::cout<<"----- Rebalancing Method: Nearest warehouse-----"<<std::endl;
         rebalancingPolicy = 1;
+        assignmentMethod = "n";
     }else if (arguments["RMethod"]=="l"){
         std::cout<<"----- Rebalancing Method: Level with beta of " << beta << " -----"<<std::endl;
         rebalancingPolicy = 2;
+        assignmentMethod = "l";
     }else{
         std::cerr<<"Rebalancing Method: " << arguments["RMethod"] << " not found."<<std::endl;
         std::exit(-1);
@@ -1049,22 +1056,28 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
     if( arguments["AMethod"] == "n"){
         std::cout<<"----- Assignment Method: NearestWarehouse -----"<<std::endl;
         assignmentPolicy = 0;
+        assignmentMethod = "n";
     }else if (arguments["AMethod"]=="r"){
         std::cout<<"----- Assignment Method: Reassignment -----"<<std::endl;
         assignmentPolicy = 1;
+        assignmentMethod = "r";
     }
     else if(arguments["AMethod"]== "w"){
         std::cout<<"----- Assignment Method: Weighted Reassignment with alpha of " << alpha << " -----"<<std::endl;
         assignmentPolicy = 2;
+        assignmentMethod = "w";
     }
     else if (arguments["AMethod"]=="s"){
         std::cout<<"----- Assignment Method: StaticPartitioning -----"<<std::endl;
         assignmentPolicy = 3;
+        assignmentMethod = "s";
     }else{
         std::cerr<<"Assignment Method:: " << arguments["AMethod"] << " not found."<<std::endl;
         std::exit(-1);
     }
 
+    alphaString = std::to_string(alpha);
+    betaString = std::to_string(beta);
     simulation(assignmentPolicy, rebalancingPolicy, alpha, beta);
 
 

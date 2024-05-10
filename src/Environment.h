@@ -54,6 +54,10 @@ private:
 	int timeStepSize;											// As demand rates are given as a vector, this states how long one time step (1 element of the vector) is used (in seconds)
 	int nbOrdersNotAssignedToNearest;							// Number of orders not assigned to the nearest Warehouse
     int nbRebalanced;											// Number of couriers assigned to different warehouse
+	std::string alphaString;
+	std::string betaString;
+	std::string assignmentMethod;
+	std::string rebalancingMethod;
 
 	// In this method, we reassign orders to other warehouses
 	void simulation(int AssignmentPolicy, int RebalancePolicy, float alpha, float beta);
@@ -99,7 +103,7 @@ private:
 	// Function that saves a route to the list of routes
 	void writeOrderStatsToClients();
 	void writeClientsStatsToFile(std::string filename);
-	void writeStatsToFile(std::string filename, double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers);
+	void writeStatsToFile(double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers);
 	std::vector<int> printCouriersAssigned();
 
 	// Functions that writes routes/orders and costs to file
