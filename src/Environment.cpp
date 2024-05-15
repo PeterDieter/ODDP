@@ -400,6 +400,8 @@ void Environment::writeStatsToFile(double percDelayed, double averageDelay, doub
     std::string gridInstanceString = gridInstance ? "true" : "false";
     std::string maxWaitingString = std::to_string(data->maxWaiting);
     std::string filename = "./results/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod + "_" + bundleString + "_" + alphaString + "_" + betaString + ".txt";
+    //std::string filename = std.format("./results/{}_{}_{}_{}_{}", gridInstanceString, maxWaitingString, assignmentMethod, rebalancingMethod, bundleString )
+    //"./results/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod + "_" + bundleString + "_" + alphaString + "_" + betaString + ".txt";
     bool exist = std::filesystem::exists(filename);
     //appendFileToWorkWith.open(filename, std::fstream::in | std::fstream::out | std::fstream::app);
     if (!exist) { // Write header only if file doesn't exist or is empty
@@ -918,6 +920,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
     double running_notNearestAssignments = 0.0;
     int totalOrdersServed = 0;
     int nbEpochs = 500;
+    int print_every_x_epochs = 100;
     std::vector<int> servedVector(data->nbWarehouses, 0);
     std::vector<int> currentCourierDistribution(data->nbWarehouses, 0);
     std::vector<int> courierDistribution(data->nbWarehouses, 0);
@@ -990,7 +993,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
         
         writeStatsToFile(getTotalDelays(), getAverageDelayAllCustomers(), (float)bundledOrders/orders.size(), (float)nbOrdersNotAssignedToNearest/orders.size(), (float)nbRebalanced/orders.size());
         
-        if (epoch % 200 == 0) {
+        if (epoch % print_every_x_epochs == 0) {
 			std::printf("[%9.0d]\t %.4f\t\t %.4f\t\t %.4f\t\t\t\t %.4f\t\t\t\t\t\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter, running_notNearestAssignments/runningCounter, running_rebalancingOperations/runningCounter);
             runningCounter = 0.0;
             runnning_waiting = 0.0;
@@ -1076,8 +1079,10 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
         std::exit(-1);
     }
 
-    alphaString = std::to_string(alpha);
-    betaString = std::to_string(beta);
+    //alphaString = std::to_string(alpha);
+    //betaString = std::to_string(beta)
+    alphaString = std::format("{:.2f}", alpha);
+    betaString = std::format("{:.2f}", beta);
     simulation(assignmentPolicy, rebalancingPolicy, alpha, beta);
 
 
