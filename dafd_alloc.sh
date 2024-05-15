@@ -38,36 +38,46 @@ for inst in "${arr_inst[@]}"; do
 	fi
 	for wait in "${arr_maxwait[@]}"; do
 		for ameth in "${arr_ameth[@]}"; do
-			ameth_w=0
-			if [ ${ameth} = "w" ]; then
-				ameth_w=1
-			fi
+			#ameth_w=0
+			#if [ ${ameth} = "w" ]; then
+				#ameth_w=1
+			#fi
 			for rmeth in "${arr_rmeth[@]}"; do
-				rmeth_l=0
-				if [ ${rmeth} = "l" ]; then
-					rmeth_l=1
-				fi
+				#rmeth_l=0
+				#if [ ${rmeth} = "l" ]; then
+					#rmeth_l=1
+				#fi
 				for bundle in "${arr_bundl[@]}"; do
 					use_bundling="false"
 					if [ ! -z ${bundle} ]; then
 						use_bundling="true"
 					fi
 					for alpha in "${arr_alpha[@]}"; do
+						use_alpha="${alpha}"
+						if [ ! ${ameth} = "w" ]; then
+							use_alpha=""
+						fi
 						for beta in "${arr_beta[@]}"; do
-							stat_file="${grid_inst}_${wait}_${ameth}_${rmeth}_${use_bundling}_${alpha}_${beta}.txt"
+							use_beta="${beta}"
+							if [ ! ${rmeth} = "l" ]; then
+								use_beta=""
+							fi
+							# skip if result file already exits
+							stat_file="${grid_inst}_${wait}_${ameth}_${rmeth}_${use_bundling}_${use_alpha}_${use_beta}.txt"
 							if [[ -e "${RES}/${stat_file}" ]]; then
-								echo "skipped, ${stat_file} exists"
+								echo "SKIPPED: \"${stat_file}\" already exists"
 								continue
 							fi
-							echo $stat_file
+							
+							#echo $stat_file
 							## specify output files
 							OUT_FILE=${RES}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${bundle}_${alpha}_${beta}.res
 							ERR_FILE=${RES}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${bundle}_${alpha}_${beta}.err
 							
-							#sbatch --output=${OUT_FILE} --error=${ERR_FILE} "$WORKDIR/dafd.sbatch" ${inst} ${wait} ${ameth} ${rmeth} ${bundle} ${alpha} ${beta}
-							#echo "setting (script): ${inst} ${wait} ${ameth} ${rmeth} ${bundle} ${alpha} ${beta}"
+							sbatch --output=${OUT_FILE} --error=${ERR_FILE} "$WORKDIR/dafd.sbatch" ${inst} ${wait} ${ameth} ${rmeth} ${bundle} ${alpha} ${beta}
+							echo "schedule: ${inst} ${wait} ${ameth} ${rmeth} ${bundle} ${alpha} ${beta}"
 			
-							sleep 0.0 # pause to be kind to the scheduler
+							sleep 0.5 # pause to be kind to the scheduler
 						done
 					done
 				done

@@ -1046,11 +1046,11 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
     }else if(arguments["RMethod"]== "n"){
         std::cout<<"----- Rebalancing Method: Nearest warehouse-----"<<std::endl;
         rebalancingPolicy = 1;
-        assignmentMethod = "n";
+        rebalancingMethod = "n";
     }else if (arguments["RMethod"]=="l"){
         std::cout<<"----- Rebalancing Method: Level with beta of " << beta << " -----"<<std::endl;
         rebalancingPolicy = 2;
-        assignmentMethod = "l";
+        rebalancingMethod = "l";
     }else{
         std::cerr<<"Rebalancing Method: " << arguments["RMethod"] << " not found."<<std::endl;
         std::exit(-1);
@@ -1081,8 +1081,8 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
 
     //alphaString = std::to_string(alpha);
     //betaString = std::to_string(beta)
-    alphaString = std::format("{:.2f}", alpha);
-    betaString = std::format("{:.2f}", beta);
+		alphaString = ( assignmentPolicy == 2 )  ? std::format("{:.2f}", alpha) : "";
+    betaString  = ( rebalancingPolicy == 2 ) ? std::format("{:.2f}", beta)  : "";
     simulation(assignmentPolicy, rebalancingPolicy, alpha, beta);
 
 

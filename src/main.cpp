@@ -2,11 +2,17 @@
 #include <iostream>
 #include <typeinfo>
 #include <unordered_map>
-
+#include <sys/time.h>
 
 #include "Data.h"
 #include "Environment.h"
 #include "WQAssign.h"
+
+double measureTime () {
+	struct timeval tim; // timeval from "sys/time.h" also records microseconds ("usec")
+	gettimeofday(&tim,NULL);
+	return tim.tv_sec + (tim.tv_usec/1000000.0);	
+}
 
 int main(int argc, char * argv[])
 {
@@ -75,9 +81,13 @@ int main(int argc, char * argv[])
   }
 
   // Creating the Environment
+  double time = -measureTime();
+  
   Environment environment(&data);
   environment.simulate(arguments);
-
+  
+  time += measureTime();
+	std::cout << "----- Time " << time << " -----" << std::endl;
 
   // return 0 upon succesful completion
   return 0;

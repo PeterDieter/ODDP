@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## SLURM Settings ################################################################
-#SBATCH -t 0:10:00						# Wall clock time limit hrs:min:sec;
+#SBATCH -t 0:03:00						# Wall clock time limit hrs:min:sec;
 #															# 2 d = 48:40:00, 172800 ||
 #															# 1 w = 168:40:00, 604800 ||
 #															# 6:10 Std = 22000 ||
