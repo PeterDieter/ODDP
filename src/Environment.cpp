@@ -399,7 +399,7 @@ void Environment::writeStatsToFile(double percDelayed, double averageDelay, doub
     std::string bundleString = bundle ? "true" : "false";
     std::string gridInstanceString = gridInstance ? "true" : "false";
     std::string maxWaitingString = std::to_string(data->maxWaiting);
-    std::string filename = "statistics/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod + "_" + bundleString + "_" + alphaString + "_" + betaString + ".txt";
+    std::string filename = "./results/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod + "_" + bundleString + "_" + alphaString + "_" + betaString + ".txt";
     bool exist = std::filesystem::exists(filename);
     //appendFileToWorkWith.open(filename, std::fstream::in | std::fstream::out | std::fstream::app);
     if (!exist) { // Write header only if file doesn't exist or is empty
