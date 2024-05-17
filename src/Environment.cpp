@@ -400,8 +400,6 @@ void Environment::writeStatsToFile(double percDelayed, double averageDelay, doub
     std::string gridInstanceString = gridInstance ? "true" : "false";
     std::string maxWaitingString = std::to_string(data->maxWaiting);
     std::string filename = "./results/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod + "_" + bundleString + "_" + alphaString + "_" + betaString + ".txt";
-    //std::string filename = std.format("./results/{}_{}_{}_{}_{}", gridInstanceString, maxWaitingString, assignmentMethod, rebalancingMethod, bundleString )
-    //"./results/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod + "_" + bundleString + "_" + alphaString + "_" + betaString + ".txt";
     bool exist = std::filesystem::exists(filename);
     //appendFileToWorkWith.open(filename, std::fstream::in | std::fstream::out | std::fstream::app);
     if (!exist) { // Write header only if file doesn't exist or is empty
@@ -1079,8 +1077,6 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
         std::exit(-1);
     }
 
-    //alphaString = std::to_string(alpha);
-    //betaString = std::to_string(beta)
 		alphaString = ( assignmentPolicy == 2 )  ? std::format("{:.2f}", alpha) : "";
     betaString  = ( rebalancingPolicy == 2 ) ? std::format("{:.2f}", beta)  : "";
     simulation(assignmentPolicy, rebalancingPolicy, alpha, beta);

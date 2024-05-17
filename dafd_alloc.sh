@@ -2,7 +2,7 @@
 
 # loop over all parameter settings
 # print the filename (so we have some visual progress indicator)
-# then submit the tophat jobs to SLURM
+# then submit the jobs to SLURM
 
 ## working directory
 BASEDIR=/scratch/hpc-prf-pose/peter
@@ -18,17 +18,25 @@ RES=${WORKDIR}/results
 if [[ ! -d ${RES} ]]; then
 	mkdir -p ${RES}
 fi
+## directories for logs
+LOG=${WORKDIR}/log
+## make dir if necessary
+if [[ ! -d ${LOG} ]]; then
+	mkdir -p ${LOG}
+fi
 
 #============================================================
 
 # all parameter settings
 arr_inst=( "zip" "grid" ) # 2 3 )
 arr_maxwait=( 1200 1500 )
-arr_ameth=( "w" "n" "r" )
+arr_ameth=( "n" "w" "r" )
 arr_rmeth=( "l" "s" "n" )
-arr_bundl=( "b" "" )
+arr_bundl=( "" "b" )
 arr_alpha=( 0.60 0.70 )
 arr_beta=( 0.80 0.90 ) # 0.8 )
+
+#============================================================
 
 # loop over all combinations
 for inst in "${arr_inst[@]}"; do
@@ -38,19 +46,13 @@ for inst in "${arr_inst[@]}"; do
 	fi
 	for wait in "${arr_maxwait[@]}"; do
 		for ameth in "${arr_ameth[@]}"; do
-			#ameth_w=0
-			#if [ ${ameth} = "w" ]; then
-				#ameth_w=1
-			#fi
 			for rmeth in "${arr_rmeth[@]}"; do
-				#rmeth_l=0
-				#if [ ${rmeth} = "l" ]; then
-					#rmeth_l=1
-				#fi
 				for bundle in "${arr_bundl[@]}"; do
 					use_bundling="false"
+					bundl_arg="-"
 					if [ ! -z ${bundle} ]; then
 						use_bundling="true"
+						bundl_arg="${bundle}"
 					fi
 					for alpha in "${arr_alpha[@]}"; do
 						use_alpha="${alpha}"
@@ -58,6 +60,7 @@ for inst in "${arr_inst[@]}"; do
 							use_alpha=""
 						fi
 						for beta in "${arr_beta[@]}"; do
+							# --------------------------------------------------------
 							use_beta="${beta}"
 							if [ ! ${rmeth} = "l" ]; then
 								use_beta=""
@@ -68,16 +71,26 @@ for inst in "${arr_inst[@]}"; do
 								echo "SKIPPED: \"${stat_file}\" already exists"
 								continue
 							fi
+							# skip unnecessary method/alpha combinations
+							if [[  -z ${use_alpha} && "${alpha}" != "${arr_alpha[0]}" ]]; then
+								echo "schedule: ${inst} ${wait} ${ameth} ${rmeth} ${bundl_arg} ${alpha} ${beta} --- SKIPPED: Non-w AMeth with an alpha already started"
+								continue
+							fi
+							# skip unnecessary method/beta combinations
+							if [[  -z ${use_beta} && "${beta}" != "${arr_beta[0]}" ]]; then
+								echo "schedule: ${inst} ${wait} ${ameth} ${rmeth} ${bundl_arg} ${alpha} ${beta} --- SKIPPED: Non-l RMeth with an beta already started"
+								continue
+							fi
+							# --------------------------------------------------------
+							## specify log files
+							OUT_FILE=${LOG}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${use_bundling}_${alpha}_${beta}.res
+							ERR_FILE=${LOG}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${use_bundling}_${alpha}_${beta}.err
 							
-							#echo $stat_file
-							## specify output files
-							OUT_FILE=${RES}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${bundle}_${alpha}_${beta}.res
-							ERR_FILE=${RES}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${bundle}_${alpha}_${beta}.err
-							
-							sbatch --output=${OUT_FILE} --error=${ERR_FILE} "$WORKDIR/dafd.sbatch" ${inst} ${wait} ${ameth} ${rmeth} ${bundle} ${alpha} ${beta}
-							echo "schedule: ${inst} ${wait} ${ameth} ${rmeth} ${bundle} ${alpha} ${beta}"
+							sbatch --output=${OUT_FILE} --error=${ERR_FILE} "$WORKDIR/dafd.sbatch" ${inst} ${wait} ${ameth} ${rmeth} ${bundl_arg} ${alpha} ${beta}
+							echo "schedule: ${inst} ${wait} ${ameth} ${rmeth} ${bundl_arg} ${alpha} ${beta}"
 			
 							sleep 0.5 # pause to be kind to the scheduler
+							# --------------------------------------------------------
 						done
 					done
 				done
