@@ -1077,9 +1077,10 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
         std::exit(-1);
     }
 
-		alphaString = ( assignmentPolicy == 2 )  ? std::format("{:.2f}", alpha) : "";
-    betaString  = ( rebalancingPolicy == 2 ) ? std::format("{:.2f}", beta)  : "";
+    alphaString = std::to_string(alpha);
+    alphaString = alphaString.substr(0, alphaString.find('.') + 3);
+    betaString = std::to_string(beta);
+    betaString = betaString.substr(0, betaString.find('.') + 3);
     simulation(assignmentPolicy, rebalancingPolicy, alpha, beta);
-
 
 }
