@@ -31,6 +31,8 @@ struct Client
 	Location location;					// Location of the client
 	std::vector< int> nbOrders;			// the number of times the client ordered per hour
 	std::vector< int> waitingTimes;		// the waiting time per hour
+	std::vector< int> timesDelayed;		// the times an order of this client has been delayed per hour
+	std::vector< int> timesBundled;		// the times an order of this client has been delayed per hour
 	long double averageWaitingTime; // Average time to serve orders of the client
 	int visitedCount;				// Number of times the client has been visited during the simulation 
 	Quadrant* inQuadrant;			// pointer to quadrant in which the client is located

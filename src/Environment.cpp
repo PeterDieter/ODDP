@@ -372,7 +372,8 @@ void Environment::writeOrderStatsToClients(){
         int hour = o->orderTime/timeStepSize;
         o->client->nbOrders[hour] += 1;
         if (o->arrivalTime-o->orderTime > data->maxWaiting){
-            o->client->waitingTimes[hour] += 1; // o->arrivalTime-o->orderTime - data->maxWaiting;
+            o->client->timesDelayed[hour] += o->arrivalTime-o->orderTime - data->maxWaiting;
+            o->client->waitingTimes[hour] += 1;
         }
     }
 }
@@ -386,7 +387,7 @@ void Environment::writeClientsStatsToFile(std::string filename){
 		{
             for (int hour = 0; hour<data->simulationTime; hour++){
                 // Here we print the order of customers that we visit 
-                myfile << client.location.lat << " " << client.location.lon << " " << hour << " " << client.nbOrders[hour] << " " << client.waitingTimes[hour];
+                myfile << client.location.lat << " " << client.location.lon << " " << hour << " " << client.nbOrders[hour] << " " << client.timesDelayed[hour]<< " " << client.waitingTimes[hour]<< " " << client.timesBundled[hour];
                 myfile << std::endl;
             }
 
@@ -488,10 +489,15 @@ void Environment::updateInformation(Order* newOrder)
                 newOrder->arrivalTime = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient + calculateDistance(lastOrder->client->location, newOrder->client->location);
                 newOrder->timeCourierLeavesToOrder = lastOrder->arrivalTime + lastOrder->serviceTimeAtClient;
                 newOrder->assignedCourier->assignedToOrders[numberOfRoutes].push_back(newOrder);
+                int currentHour = newOrder->orderTime/timeStepSize;
                 if (newOrder->assignedCourier->assignedToOrders[numberOfRoutes].size() == 1){
                     bundledOrders += 2;
+                    newOrder->client->timesBundled[currentHour] += 1;
+                    lastOrder->client->timesBundled[currentHour] += 1;
                 }else{
                     bundledOrders += 1;
+                    newOrder->client->timesBundled[currentHour] += 1;
+                    
                 }
  
             }
@@ -1003,7 +1009,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
         //writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
     }
    
-    //writeClientsStatsToFile("clientStatistics_CFA.txt");
+    //writeClientsStatsToFile("clientStatistics_CFA_grid2.txt");
     std::cout<<"----- Simulations finished -----"<<std::endl;
 }
 
@@ -1055,7 +1061,7 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
     }
 
     if( arguments["AMethod"] == "n"){
-        std::cout<<"----- Assignment Method: NearestWarehouse -----"<<std::endl;
+        std::cout<<"----- Assignment Method: Nearest warehouse -----"<<std::endl;
         assignmentPolicy = 0;
         assignmentMethod = "n";
     }else if (arguments["AMethod"]=="r"){

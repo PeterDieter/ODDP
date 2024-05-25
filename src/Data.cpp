@@ -125,6 +125,8 @@ Data::Data(int maxWaitingInput, std::string instance)
 						inputFile >> paramClients[i].clientID >> paramClients[i].location.lon >> paramClients[i].location.lat;
 						paramClients[i].nbOrders.assign(hourlyArrivalRates.size(), 0);
 						paramClients[i].waitingTimes.assign(hourlyArrivalRates.size(), 0);
+						paramClients[i].timesDelayed.assign(hourlyArrivalRates.size(), 0);
+						paramClients[i].timesBundled.assign(hourlyArrivalRates.size(), 0);
 					}
 								// Reduce the size of the vector of clients if possible
 					paramClients.resize(nbClients);
