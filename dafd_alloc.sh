@@ -31,7 +31,7 @@ fi
 arr_inst=( "zip" "grid" ) # 2 3 )
 arr_maxwait=( 1200 1500 1800 )
 arr_ameth=( "n" "w" "r" )
-arr_rmeth=( "l" "s" "n" )
+arr_rmeth=( "l" "s" )
 arr_bundl=( "" "b" )
 arr_alpha=( 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00 )
 arr_beta=( 0.50 0.60 0.70 0.80 0.90 ) # 0.8 )

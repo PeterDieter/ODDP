@@ -14,20 +14,21 @@ df['delayRate'] = df['delayTime']/df['orders']
 file_path = 'eval/clientStatistics_CFA_' + instance + '.txt'
 df2 = pd.read_csv(file_path, delim_whitespace=True, names=['x', 'y', 'time', 'orders', 'delayTime', 'delayOccurence', 'bundled'])
 df2['delayRate'] = df2['delayTime']/df2['orders']
+df2['bundled'] = df2['bundled']/df2['orders']
 
 df2['difference'] = (df['delayRate']-df2['delayRate'])/(df['delayRate'])# / df['delayRate']
 df3 = df2.groupby(['x', 'y']).mean()
-df2 = df2[df2['time'] == 11] 
+df2 = df2[df2['time'] == 14] 
 df2 = df2.fillna(0)
 df3 = df3.reset_index()
 print(df3)
 
 if (instance == "grid"):
     print(type(df3))
-    heatmap_data = df3.pivot('y', 'x', 'delayRate')
+    heatmap_data = df2.pivot('y', 'x', 'bundled')
 
     # Plot the heatmap
-    plt.imshow(heatmap_data, cmap='viridis', origin='lower', vmin=0, vmax=20)
+    plt.imshow(heatmap_data, cmap='viridis', origin='lower', vmin=0, vmax=1)
     plt.colorbar()
 
     # Add labels
@@ -46,15 +47,15 @@ else:
     fig = go.Figure()
 
     fig.add_trace(go.Densitymapbox(
-        lat=df3['x'],
-        lon=df3['y'],
+        lat=df2['x'],
+        lon=df2['y'],
         
-        z=df3['delayRate'],
+        z=df2['bundled'],
         radius=5,
         showscale=True,
         colorscale='viridis',
         zmin = 0,
-        zmax = 60
+        zmax = 1
     ))
 
     fig.add_trace(go.Scattermapbox(

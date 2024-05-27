@@ -702,9 +702,9 @@ void Environment::chooseWarehouseForCourierLevel(Courier* courier, float beta)
     int numberOfCustomers = courier->assignedToOrders[numberOfRoutes].size()-1;
     int arrivalTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->arrivalTime;
     float ratio = (float) courier->assignedToWarehouse->couriersAssigned.size()/courier->assignedToWarehouse->initialNbCouriers;
+    std::vector<int> distancesToWarehouses = data->travelTime.getRow(nextOrderBeingServed->client->clientID);
+    int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
     if(currentTime == arrivalTime && ratio > beta){
-        std::vector<int> distancesToWarehouses = data->travelTime.getRow(nextOrderBeingServed->client->clientID);
-        int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
         auto it = std::find_if(courier->assignedToWarehouse->couriersAssigned.begin(), courier->assignedToWarehouse->couriersAssigned.end(), [&](const Courier* obj) {
             return obj->courierID == courier->courierID;
         });
@@ -712,6 +712,8 @@ void Environment::chooseWarehouseForCourierLevel(Courier* courier, float beta)
         courier->assignedToWarehouse = warehouses[indexClosestWarehouse];
         warehouses[indexClosestWarehouse]->couriersAssigned.push_back(courier);
         courier->timeWhenAvailable = currentTime + distancesToWarehouses[indexClosestWarehouse];
+    }else{
+        courier->timeWhenAvailable = std::max(courier->timeWhenAvailable, currentTime + distancesToWarehouses[indexClosestWarehouse]);
     }
 
     // Remove the order from the order that have not been served
@@ -722,35 +724,6 @@ void Environment::chooseWarehouseForCourierLevel(Courier* courier, float beta)
     if (courier->assignedToWarehouse->wareID != wareIDInitial){
         nbRebalanced += 1;
     }
-
-
-}
-
-void Environment::chooseWarehouseForCourierNearest(Courier* courier)
-{
-    // Increment the number of order that have been served
-    nbOrdersServed ++;
-    totalWaitingTime += nextOrderBeingServed->arrivalTime - nextOrderBeingServed->orderTime;
-    int numberOfRoutes = courier->assignedToOrders.size()-1;
-    int numberOfCustomers = courier->assignedToOrders[numberOfRoutes].size()-1;
-    int arrivalTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->arrivalTime;
-
-    if(currentTime == arrivalTime){
-        std::vector<int> distancesToWarehouses = data->travelTime.getRow(nextOrderBeingServed->client->clientID);
-        int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
-        auto it = std::find_if(courier->assignedToWarehouse->couriersAssigned.begin(), courier->assignedToWarehouse->couriersAssigned.end(), [&](const Courier* obj) {
-            return obj->courierID == courier->courierID;
-        });
-        courier->assignedToWarehouse->couriersAssigned.erase(it);
-        courier->assignedToWarehouse = warehouses[indexClosestWarehouse];
-        warehouses[indexClosestWarehouse]->couriersAssigned.push_back(courier);
-        courier->timeWhenAvailable = currentTime + distancesToWarehouses[indexClosestWarehouse];
-    }
-
-    // Remove the order from the order that have not been served
-	ordersAssignedToCourierButNotServed.erase(ordersAssignedToCourierButNotServed.begin());
-    // Update the order that will be served next
-    updateOrderBeingServedNext();
 }
 
 void Environment::chooseClosestWarehouseForOrder(Order* newOrder, std::vector<int> relatedOrders)
@@ -967,8 +940,6 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
                     if (RebalancePolicy==0){
                         chooseWarehouseForCourierStatic(c);
                     }else if(RebalancePolicy == 1){
-                        chooseWarehouseForCourierNearest(c);
-                    }else if(RebalancePolicy == 2){
                         chooseWarehouseForCourierLevel(c, beta);
                     }
                 }
@@ -1009,7 +980,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
         //writeCourierRoutesToFile("data/animationData/routes.txt", "data/animationData/orders.txt");
     }
    
-    //writeClientsStatsToFile("clientStatistics_CFA_grid2.txt");
+    //writeClientsStatsToFile("clientStatistics_rebal_zip.txt");
     std::cout<<"----- Simulations finished -----"<<std::endl;
 }
 
@@ -1047,13 +1018,9 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
         std::cout<<"----- Rebalancing Method: Static -----"<<std::endl;
         rebalancingPolicy = 0;
         rebalancingMethod = "s";
-    }else if(arguments["RMethod"]== "n"){
-        std::cout<<"----- Rebalancing Method: Nearest warehouse-----"<<std::endl;
-        rebalancingPolicy = 1;
-        rebalancingMethod = "n";
     }else if (arguments["RMethod"]=="l"){
         std::cout<<"----- Rebalancing Method: Level with beta of " << beta << " -----"<<std::endl;
-        rebalancingPolicy = 2;
+        rebalancingPolicy = 1;
         rebalancingMethod = "l";
     }else{
         std::cerr<<"Rebalancing Method: " << arguments["RMethod"] << " not found."<<std::endl;

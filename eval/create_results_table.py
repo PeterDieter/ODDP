@@ -14,6 +14,6 @@ idx = df.groupby(['a_meth', 'r_meth', 'bundling'])['averageDelay'].idxmin()
 result_df = df.loc[idx].reset_index(drop=True)
 result_df = result_df[result_df['r_meth'] != 'n']
 result_df = result_df.sort_values(by=['bundling', 'a_meth'], ascending = False)
-result_df = result_df.drop(columns=['instance', 'max_wait', 'alpha', 'beta'])
+#result_df = result_df.drop(columns=['instance', 'max_wait', 'alpha', 'beta'])
 
 print(result_df.to_latex(index=False, float_format="%.2f"))

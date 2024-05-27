@@ -40,8 +40,7 @@ If the weighted policy is chosen, a weighting value **a** needs to be chosen, th
 Concerning rebalancing, **RMethod** can take the following values:
 
 1. s: Static. No rebalancing occurs.
-2. n: Nearest: Always assign the courier to the nearest warehouse.
-3. l: Level: Assign the courier to the nearest warehouse but check that each warehouse remains at a certain level.
+2. l: Level: Assign the courier to the nearest warehouse but check that each warehouse remains at a certain level.
 
 If the level policy is chosen, a level value **beta** needs to be chosen, that is a float between 0 and 1.
 
