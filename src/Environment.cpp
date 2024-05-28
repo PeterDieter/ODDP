@@ -686,6 +686,8 @@ void Environment::chooseWarehouseForCourierStatic(Courier* courier)
     int numberOfRoutes = courier->assignedToOrders.size()-1;
     int numberOfCustomers = courier->assignedToOrders[numberOfRoutes].size()-1;
     int arrivalTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->arrivalTime;
+    int serviceTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->serviceTimeAtClient;
+
     // Remove the order from the order that have not been served
 	ordersAssignedToCourierButNotServed.erase(ordersAssignedToCourierButNotServed.begin());
     // Update the order that will be served next
@@ -701,19 +703,21 @@ void Environment::chooseWarehouseForCourierLevel(Courier* courier, float beta)
     int numberOfRoutes = courier->assignedToOrders.size()-1;
     int numberOfCustomers = courier->assignedToOrders[numberOfRoutes].size()-1;
     int arrivalTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->arrivalTime;
+    int serviceTime = courier->assignedToOrders[numberOfRoutes][numberOfCustomers]->serviceTimeAtClient;
     float ratio = (float) courier->assignedToWarehouse->couriersAssigned.size()/courier->assignedToWarehouse->initialNbCouriers;
     std::vector<int> distancesToWarehouses = data->travelTime.getRow(nextOrderBeingServed->client->clientID);
     int indexClosestWarehouse = std::min_element(distancesToWarehouses.begin(), distancesToWarehouses.end())-distancesToWarehouses.begin();
-    if(currentTime == arrivalTime && ratio > beta){
-        auto it = std::find_if(courier->assignedToWarehouse->couriersAssigned.begin(), courier->assignedToWarehouse->couriersAssigned.end(), [&](const Courier* obj) {
+    if(currentTime == arrivalTime && ratio > beta && wareIDInitial!=indexClosestWarehouse){
+        //std::cout<<indexClosestWarehouse<<" "<<wareIDInitial<<std::endl;
+        auto it = std::find_if(courier->assignedToWarehouse->couriersAssigned.begin(), courier->assignedToWarehouse->couriersAssigned.end(), [courier](Courier* obj) {
             return obj->courierID == courier->courierID;
-        });
+        }); 
+
+        courier->timeWhenAvailable = arrivalTime + serviceTime + distancesToWarehouses[indexClosestWarehouse];
         courier->assignedToWarehouse->couriersAssigned.erase(it);
         courier->assignedToWarehouse = warehouses[indexClosestWarehouse];
         warehouses[indexClosestWarehouse]->couriersAssigned.push_back(courier);
-        courier->timeWhenAvailable = currentTime + distancesToWarehouses[indexClosestWarehouse];
-    }else{
-        courier->timeWhenAvailable = std::max(courier->timeWhenAvailable, currentTime + distancesToWarehouses[indexClosestWarehouse]);
+        
     }
 
     // Remove the order from the order that have not been served

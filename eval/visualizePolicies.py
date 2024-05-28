@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import json
 
-instance = "zip"
+instance = "grid"
 
 # Read the TXT file into a Pandas DataFrame
 file_path = 'eval/clientStatistics_nearest_' + instance + '.txt'
@@ -25,10 +25,10 @@ print(df3)
 
 if (instance == "grid"):
     print(type(df3))
-    heatmap_data = df2.pivot('y', 'x', 'bundled')
+    heatmap_data = df2.pivot('y', 'x', 'delayRate')
 
     # Plot the heatmap
-    plt.imshow(heatmap_data, cmap='viridis', origin='lower', vmin=0, vmax=1)
+    plt.imshow(heatmap_data, cmap='viridis', origin='lower', vmin=0, vmax=100)
     plt.colorbar()
 
     # Add labels
