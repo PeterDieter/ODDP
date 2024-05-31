@@ -179,11 +179,11 @@ def create_grid_instance(fileName: str, totalCouriers: int=20, pickersPerWarehou
     Returns:
         None 
     """
-    warehouses = np.array([[24,24],
-                            [24,74],
-                            [74,24],
-                            [74,74]])
-    clients = np.array([[i, j] for i in range(100) for j in range(100) if not ([i,j] == warehouses).all(1).any()])
+    warehouses = np.array([[25,25],
+                            [25,75],
+                            [75,25],
+                            [75,75]])
+    clients = np.array([[i, j] for i in range(101) for j in range(101) if not ([i,j] == warehouses).all(1).any()])
 
     matrix = np.zeros((len(clients),len(warehouses)))
     clientCounter, warehouseCounter = 0, 0
