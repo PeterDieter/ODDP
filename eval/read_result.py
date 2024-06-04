@@ -45,7 +45,7 @@ def read_file_text(_file):
 
 def read_file_param(_inst,_wait,_ameth,_rmeth,_bundle,_alpha,_beta):
 	
-	fstem = "../results"
+	fstem = "./results"
 	inst = "true" if _inst else "false"
 	bundle = "true" if _bundle else "false"
 	alpha = "{:.2f}".format(_alpha) if _alpha > -99 else ''
@@ -56,10 +56,11 @@ def read_file_param(_inst,_wait,_ameth,_rmeth,_bundle,_alpha,_beta):
 	
 	return instance, df
 
-def read_all(res_path="../results",force_read=True):
-	if (not os.path.isfile("data_dafd.csv") or force_read):
+def read_all(res_path="./results",force_read=True):
+	if (not os.path.isfile("./eval/data_dafd.csv") or force_read):
 		param_labels = ["instance", "max_wait", "a_meth", "r_meth", "bundling", "alpha", "beta"]
 		with open(res_path+"/"+os.listdir(res_path)[0], "r") as file:
+			print("Result \".csv\" not found -> read data from \".txt\"")
 			data_labels = file.readline().strip().split(';')
 		
 		df_all = pd.DataFrame(columns=param_labels+data_labels)
@@ -70,23 +71,20 @@ def read_all(res_path="../results",force_read=True):
 		#df_all = df_all.sort_values(by=["instance","a_meth","r_meth"],ascending=True)
 		df_all = df_all.sort_values(by=["instance","max_wait",data_labels[1]],ascending=True)
 		df_all.reset_index(drop=True,inplace=True)
-		df_all.to_csv("data_dafd.csv", encoding='utf-8', index=False)
+		df_all.to_csv("./eval/data_dafd.csv", encoding='utf-8', index=False)
 	else:
-		df_all = pd.read_csv("data_dafd.csv")
+		print("Result \".csv\" found -> opened")
+		df_all = pd.read_csv("./eval/data_dafd.csv")
 	
 	return df_all
 
 def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,yval="averageDelay"):
 	
 	df_tmp = df.loc[ (df["instance"] == ins) & (df["max_wait"] == wait) & (df["a_meth"] == 'w') & (df["bundling"] == bun) & (df["alpha"] < 0.999),["r_meth","alpha","beta",yval]]
-	print(df_tmp)
 	
 	methods = list(df_tmp.loc[:,"r_meth"].unique())
 	alphas = sorted(list(df_tmp.loc[:,"alpha"].unique()))
 	betas = list(df_tmp.loc[:,"beta"].unique())
-	print(methods)
-	print(alphas)
-	print(betas)
 	
 	para = []
 	y_list = []
@@ -101,8 +99,6 @@ def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,yval="averageDelay"):
 			y_list.append(df_tmp.loc[ (df_tmp["r_meth"] == meth),["alpha",yval]].sort_values(by=["alpha"],ascending=True)[yval].tolist())
 			para.append((meth,-100))
 	
-	print(para)
-	print(y_list)
 	line_colours = get_hex_col(len(para))
 	fig = plt.figure(figsize=(8, 4))
 	ax = fig.add_subplot(111)
@@ -119,8 +115,11 @@ def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,yval="averageDelay"):
 	fig.tight_layout()#(rect=[-0.02, 0.03, 1, 0.95])
 	
 	#plt.show()
-	plt.savefig("./plots/{}/plot_{}_{}_{}_{}.png".format(yval,ins,wait,bun,yval))
-	print("show")
+	plt.savefig("./eval/plots/{}/plot_{}_{}_{}_{}.png".format(yval,ins,wait,bun,yval))
+	print("saved plot to \"./eval/plots/{}/plot_{}_{}_{}_{}.png\"".format(yval,ins,wait,bun,yval))
+	
+	plt.close()
+	
 	return
 
 
