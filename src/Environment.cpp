@@ -396,7 +396,7 @@ void Environment::writeClientsStatsToFile(std::string filename){
 	else std::cout << "----- IMPOSSIBLE TO OPEN: " << filename << std::endl;    
 }
 
-void Environment::writeStatsToFile(double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers){
+void Environment::writeStatsToFile(double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers, double averageWaiting, double maxWaiting){
     std::string bundleString = bundle ? "true" : "false";
     std::string gridInstanceString = gridInstance ? "true" : "false";
     std::string maxWaitingString = std::to_string(data->maxWaiting);
@@ -405,13 +405,13 @@ void Environment::writeStatsToFile(double percDelayed, double averageDelay, doub
     //appendFileToWorkWith.open(filename, std::fstream::in | std::fstream::out | std::fstream::app);
     if (!exist) { // Write header only if file doesn't exist or is empty
         std::ofstream myfile(filename);
-        myfile << "percDelayed" << ";" << "averageDelay" << ";" << "percBundled" << ";" << "percReassignedOrders" << ";" << "percReassignedCouriers" << std::endl;
-        myfile << percDelayed << ";" << averageDelay << ";" << percBundled << ";" << percReassignedOrders << ";" << percReassignedCouriers << std::endl;
+        myfile << "percDelayed" << ";" << "averageDelay" << ";" << "averageWaiting" << ";" << "maxWaiting" << ";" << "percBundled" << ";" << "percReassignedOrders" << ";" << "percReassignedCouriers" << std::endl;
+        myfile << percDelayed << ";" << averageDelay << ";" << averageWaiting << ";" << maxWaiting << ";" << percBundled << ";" << percReassignedOrders << ";" << percReassignedCouriers << std::endl;
         myfile.close();
     }else{
         std::ofstream myfile(filename, std::ios_base::app); // Open file in append mode
         // Write statistics
-        myfile << percDelayed << ";" << averageDelay << ";" << percBundled << ";" << percReassignedOrders << ";" << percReassignedCouriers << std::endl;
+        myfile << percDelayed << ";" << averageDelay << ";" << averageWaiting << ";" << maxWaiting << ";" << percBundled << ";" << percReassignedOrders << ";" << percReassignedCouriers << std::endl;
         myfile.close();
     }
 
@@ -424,6 +424,24 @@ double Environment::getAverageDelayAllCustomers(){
         if (o->arrivalTime-o->orderTime > data->maxWaiting){
             sum += o->arrivalTime-o->orderTime-data->maxWaiting;
         }
+    }
+    return sum/ orders.size();
+}
+
+double Environment::getMaxWaiting(){
+    double maxValue = 0;
+    for (Order* o: orders){
+        if(o->arrivalTime-o->orderTime > maxValue){
+            maxValue = o->arrivalTime-o->orderTime;
+        }
+    }
+    return maxValue;
+}
+
+double Environment::getAverageWaitingAllCustomers(){
+    double sum = 0;
+    for (Order* o: orders){
+        sum += o->arrivalTime-o->orderTime;
     }
     return sum/ orders.size();
 }
@@ -970,7 +988,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
             courierDistribution[i] += currentCourierDistribution[i];
         }
         
-        writeStatsToFile(getTotalDelays(), getAverageDelayAllCustomers(), (float)bundledOrders/orders.size(), (float)nbOrdersNotAssignedToNearest/orders.size(), (float)nbRebalanced/orders.size());
+        writeStatsToFile(getTotalDelays(), getAverageDelayAllCustomers(), (float)bundledOrders/orders.size(), (float)nbOrdersNotAssignedToNearest/orders.size(), (float)nbRebalanced/orders.size(), getAverageWaitingAllCustomers(), getMaxWaiting());
         
         if (epoch % print_every_x_epochs == 0) {
 			std::printf("[%9.0d]\t %.4f\t\t %.4f\t\t %.4f\t\t\t\t %.4f\t\t\t\t\t\t %.4f\n",epoch,running_delays / runningCounter,runnning_waiting / runningCounter,running_bundling / runningCounter, running_notNearestAssignments/runningCounter, running_rebalancingOperations/runningCounter);

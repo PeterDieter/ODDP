@@ -84,6 +84,8 @@ private:
 	void addOrderToVectorDecisionTime(std::vector<Order*> & V, Order* orderToAdd);
 
 	double getAverageDelayAllCustomers();
+	double getMaxWaiting();
+	double getAverageWaitingAllCustomers();
 	double getAverageDelayDelayedCustomers();
 	double getTotalDelays();
 
@@ -103,12 +105,11 @@ private:
 	// Function that saves a route to the list of routes
 	void writeOrderStatsToClients();
 	void writeClientsStatsToFile(std::string filename);
-	void writeStatsToFile(double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers);
+	void writeStatsToFile(double percDelayed, double averageDelay, double percBundled, double percReassignedOrders, double percReassignedCouriers, double averageWaiting, double maxWaiting);
 	std::vector<int> printCouriersAssigned();
 
 	// Functions that writes routes/orders and costs to file
 	void writeCostsToFile(std::vector<float> costs, std::vector<float> averageDelayRateVector, float lambdaTemporal, float lambdaSpatial, bool is_training);
-	void writeStatsToFile(std::vector<float> costs, std::vector<float> averageDelayRateVector, std::vector<float> averageWaitingTime, std::vector<float> maxWaitingTime);
 	void writeMatrixToFile(std::vector<std::vector<double>> matrix, std::string filename);
 	void writeCourierRoutesToFile(std::string fileNameRoutes, std::string fileNameOrders);
 	

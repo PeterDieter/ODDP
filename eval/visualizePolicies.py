@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import json
 
-instance = "grid"
+instance = "zip"
 
 # Read the TXT file into a Pandas DataFrame
 file_path = 'eval/clientStatistics_nearest_' + instance + '.txt'
@@ -16,19 +16,19 @@ df2 = pd.read_csv(file_path, delim_whitespace=True, names=['x', 'y', 'time', 'or
 df2['delayRate'] = df2['delayTime']/df2['orders']
 df2['bundled'] = df2['bundled']/df2['orders']
 
-df2['difference'] = (df['delayRate']-df2['delayRate'])/(df['delayRate'])# / df['delayRate']
+df2['difference'] = (df['delayRate']-df2['delayRate'])#/(df['delayRate'])# / df['delayRate']
 df3 = df2.groupby(['x', 'y']).mean()
-df2 = df2[df2['time'] == 14] 
+df2 = df2[df2['time'] == 12] 
 df2 = df2.fillna(0)
 df3 = df3.reset_index()
 print(df3)
 
 if (instance == "grid"):
     print(type(df3))
-    heatmap_data = df2.pivot('y', 'x', 'delayRate')
+    heatmap_data = df2.pivot('y', 'x', 'difference')
 
     # Plot the heatmap
-    plt.imshow(heatmap_data, cmap='viridis', origin='lower', vmin=0, vmax=100)
+    plt.imshow(heatmap_data, cmap='viridis', origin='lower', vmin=0, vmax=10)
     plt.colorbar()
 
     # Add labels
@@ -50,12 +50,12 @@ else:
         lat=df2['x'],
         lon=df2['y'],
         
-        z=df2['bundled'],
+        z=df2['difference'],
         radius=5,
         showscale=True,
         colorscale='viridis',
         zmin = 0,
-        zmax = 1
+        zmax = 300
     ))
 
     fig.add_trace(go.Scattermapbox(
