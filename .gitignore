@@ -7,6 +7,7 @@ onlineAssignment
 results/
 log/
 eval/plots/
+clientStatistics_*.txt
 
 # temp files
 .~lock.*
