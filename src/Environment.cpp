@@ -22,7 +22,7 @@ Environment::Environment(Data* data) : data(data)
     std::cout<<"----- Create Environment -----"<<std::endl;
 }
 
-void Environment::initialize()
+void Environment::initialize(double ArrivalRateScalingFactor=1.0)
 {
     
     // CONSTRUCTOR: First we initialize the environment by assigning 
@@ -112,13 +112,12 @@ void Environment::initialize()
     int nextTime;
     while (currTime < data->simulationTime*timeStepSize){
         //std::cout<<data->hourlyArrivalRates[currTime/timeStepSize]*2.5<<std::endl;
-        nextTime = drawFromExponentialDistribution(data->hourlyArrivalRates[currTime/timeStepSize]);
+        nextTime = drawFromExponentialDistribution(data->hourlyArrivalRates[currTime/timeStepSize]*ArrivalRateScalingFactor);
         currTime += nextTime;
         orderTimes.push_back(nextTime);
         clientsVector.push_back(data->rng() % data->nbClients);
         timesToComission.push_back(drawFromExponentialDistribution(data->meanCommissionTime));
         timesToServe.push_back(drawFromExponentialDistribution(data->meanServiceTimeAtClient));
-            
     }
 
 }
@@ -400,7 +399,8 @@ void Environment::writeStatsToFile(double percDelayed, double averageDelay, doub
     std::string bundleString = bundle ? "true" : "false";
     std::string gridInstanceString = gridInstance ? "true" : "false";
     std::string maxWaitingString = std::to_string(data->maxWaiting);
-    std::string filename = "./results/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod + "_" + bundleString + "_" + alphaString + "_" + betaString + ".txt";
+    std::string filename = "./results/" + gridInstanceString + "_" + maxWaitingString + "_" + assignmentMethod + "_" + rebalancingMethod \
+													+ "_" + bundleString + "_" + alphaString + "_" + betaString + "_" + scaleString +".txt";
     bool exist = std::filesystem::exists(filename);
     //appendFileToWorkWith.open(filename, std::fstream::in | std::fstream::out | std::fstream::app);
     if (!exist) { // Write header only if file doesn't exist or is empty
@@ -907,7 +907,7 @@ int Environment::sampleFromProbabilities(const std::vector<float>& probabilities
     return distribution(data->rng);
 }
 
-void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float alpha, float beta)
+void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float alpha, float beta, double scale=1.0)
 {
     std::cout<<"----- Simulation starts -----"<<std::endl;
    
@@ -927,7 +927,7 @@ void Environment::simulation(int AssignmentPolicy, int RebalancePolicy, float al
 	std::printf("[Iteration]\t Delayed orders\t Average delay\t Average percentage bundled\t Average percentage of reassigned orders\t Average percentage of reassigned couriers\n");
     for (int epoch = 1; epoch <= nbEpochs; epoch++) {
         // Initialize data structures
-        initialize();
+        initialize(scale);
         // Start with simulation
         int counter = 0;
         while (currentTime < data->simulationTime*timeStepSize || ordersAssignedToCourierButNotServed.size() > 0){
@@ -1019,6 +1019,7 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
     int rebalancingPolicy = 0;
     float alpha = -1;
     float beta = 1;
+    double scaling_factor = 1.0;
 
     if(arguments.find("b") != arguments.end()){
         std::cout<<"----- Customer Bundling: True -----"<<std::endl;
@@ -1071,11 +1072,18 @@ void Environment::simulate(std::unordered_map<std::string, std::string> argument
         std::cerr<<"Assignment Method:: " << arguments["AMethod"] << " not found."<<std::endl;
         std::exit(-1);
     }
+    
+    if(arguments.find("scale") != arguments.end()){
+        scaling_factor = std::stod(arguments["scale"]);
+    }
+    std::cerr<<"----- Demand Scaling Factor:: " << scaling_factor << std::endl;
 
     alphaString = std::to_string(alpha);
     alphaString = alphaString.substr(0, alphaString.find('.') + 3);
     betaString = std::to_string(beta);
     betaString = betaString.substr(0, betaString.find('.') + 3);
-    simulation(assignmentPolicy, rebalancingPolicy, alpha, beta);
+    scaleString = std::to_string(scaling_factor);
+    scaleString = scaleString.substr(0, scaleString.find('.') + 3);
+    simulation(assignmentPolicy, rebalancingPolicy, alpha, beta, scaling_factor);
 
 }

@@ -56,14 +56,15 @@ private:
     int nbRebalanced;											// Number of couriers assigned to different warehouse
 	std::string alphaString;
 	std::string betaString;
+	std::string scaleString;
 	std::string assignmentMethod;
 	std::string rebalancingMethod;
 
 	// In this method, we reassign orders to other warehouses
-	void simulation(int AssignmentPolicy, int RebalancePolicy, float alpha, float beta);
+	void simulation(int AssignmentPolicy, int RebalancePolicy, float alpha, float beta, double scale);
 
 	// In this method we initialize the rest of the Data, such as warehouses, couriers, etc.
-	void initialize();
+	void initialize(double);
 
 	// Function to initialize the values of an order
 	void initOrder(int currentTime, int id, Order* o);

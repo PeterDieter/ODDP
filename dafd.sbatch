@@ -38,7 +38,7 @@ module load compiler/GCC/13.2.0
 #module load lang/Python/3.9.6-GCCcore-11.2.0
 #source ./venv/bin/activate
 
-srun ./onlineAssignment --instance="instances/${1}.txt" --maxWaiting=${2} --AMethod=${3} --RMethod=${4} --${5} --a=${6} --beta=${7}
+srun ./onlineAssignment --instance="instances/${1}.txt" --maxWaiting=${2} --AMethod=${3} --RMethod=${4} --${5} --a=${6} --beta=${7} --scale=${8}
 
 ## deactivate venv
 #deactivate
