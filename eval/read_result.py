@@ -39,26 +39,28 @@ def read_file_text(_file):
 	instance[4] = True if instance[4] == "true" else False
 	instance[5] = float(instance[5]) if instance[5] != '' else -100
 	instance[6] = float(instance[6]) if instance[6] != '' else -100
+	instance[7] = float(instance[7]) if instance[7] != '' else 1.0
 	df = pd.read_csv(_file, sep=";")
 	
 	return instance, df.mean(), df.sem()
 
-def read_file_param(_inst,_wait,_ameth,_rmeth,_bundle,_alpha,_beta):
+def read_file_param(_inst,_wait,_ameth,_rmeth,_bundle,_alpha,_beta,_scale):
 	
 	fstem = "./results"
 	inst = "true" if _inst else "false"
 	bundle = "true" if _bundle else "false"
 	alpha = "{:.2f}".format(_alpha) if _alpha > -99 else ''
 	beta = "{:.2f}".format(_beta) if _beta > -99 else ''
-	fname = inst+"_"+str(_wait)+"_"+_ameth+"_"+_rmeth+"_"+bundle+"_"+alpha+"_"+beta
-	instance = [_inst,_wait,_ameth,_rmeth,_bundle,_alpha,_beta]
+	scale = "{:.2f}".format(_scale)
+	fname = inst+"_"+str(_wait)+"_"+_ameth+"_"+_rmeth+"_"+bundle+"_"+alpha+"_"+beta+"_"+scale
+	instance = [_inst,_wait,_ameth,_rmeth,_bundle,_alpha,_beta,_scale]
 	df = pd.read_csv(fstem+'/'+fname+'.txt', sep=";")
 	
 	return instance, df
 
 def read_all(res_path="./results",force_read=True):
 	if (not os.path.isfile("./eval/data_dafd.csv") or force_read):
-		param_labels = ["instance", "max_wait", "a_meth", "r_meth", "bundling", "alpha", "beta"]
+		param_labels = ["instance", "max_wait", "a_meth", "r_meth", "bundling", "alpha", "beta", "scaling_factor"]
 		with open(res_path+"/"+os.listdir(res_path)[0], "r") as file:
 			print("Result \".csv\" not found -> read data from \".txt\"")
 			data_labels = file.readline().strip().split(';')
@@ -69,7 +71,7 @@ def read_all(res_path="./results",force_read=True):
 			df_all.loc[len(df_all)] = instance+df_mean.values.tolist()
 		
 		#df_all = df_all.sort_values(by=["instance","a_meth","r_meth"],ascending=True)
-		df_all = df_all.sort_values(by=["instance","max_wait",data_labels[1]],ascending=True)
+		df_all = df_all.sort_values(by=["instance","max_wait","scaling_factor",data_labels[1]],ascending=True)
 		df_all.reset_index(drop=True,inplace=True)
 		df_all.to_csv("./eval/data_dafd.csv", encoding='utf-8', index=False)
 	else:
@@ -78,9 +80,9 @@ def read_all(res_path="./results",force_read=True):
 	
 	return df_all
 
-def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,yval="averageDelay"):
+def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,scale=1.0,yval="averageDelay"):
 	
-	df_tmp = df.loc[ (df["instance"] == ins) & (df["max_wait"] == wait) & (df["a_meth"] == 'w') & (df["bundling"] == bun) & (df["alpha"] < 0.999),["r_meth","alpha","beta",yval]]
+	df_tmp = df.loc[ (df["instance"] == ins) & (df["max_wait"] == wait) & (df["scaling_factor"] == scale) & (df["a_meth"] == 'w') & (df["bundling"] == bun) & (df["alpha"] < 0.999),["r_meth","alpha","beta",yval]]
 	
 	methods = list(df_tmp.loc[:,"r_meth"].unique())
 	alphas = sorted(list(df_tmp.loc[:,"alpha"].unique()))
@@ -102,7 +104,7 @@ def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,yval="averageDelay"):
 	line_colours = get_hex_col(len(para))
 	fig = plt.figure(figsize=(8, 4))
 	ax = fig.add_subplot(111)
-	plt.title("{} per alpha (inst={}, wait={}, bundle={})".format(yval,ins,wait,bun))
+	plt.title("{} per alpha (inst={}, wait={}, bundle={}, scale={:.2f})".format(yval,ins,wait,bun,scale))
 	plt.xlabel("alpha")
 	plt.ylabel(yval)
 	for i in range(len(para)):
@@ -115,8 +117,8 @@ def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,yval="averageDelay"):
 	fig.tight_layout()#(rect=[-0.02, 0.03, 1, 0.95])
 	
 	#plt.show()
-	plt.savefig("./eval/plots/{}/plot_{}_{}_{}_{}.png".format(yval,ins,wait,bun,yval))
-	print("saved plot to \"./eval/plots/{}/plot_{}_{}_{}_{}.png\"".format(yval,ins,wait,bun,yval))
+	plt.savefig("./eval/plots/{}/plot_{}_{}_{}_{:.2f}_{}.png".format(yval,ins,wait,bun,scale,yval))
+	print("saved plot to \"./eval/plots/{}/plot_{}_{}_{}_{:.2f}_{}.png\"".format(yval,ins,wait,bun,scale,yval))
 	
 	plt.close()
 	
@@ -149,6 +151,7 @@ if __name__ == '__main__':
 	ins = [False,True]
 	wai = [1200,1500,1800]
 	bun = [False,True]
+	scale = [0.90,0.95,1.0,1.05,1.10,1.15,1.20]
 	val = ["averageDelay","percDelayed","percBundled"]
 	#val = ["percDelayed"]
 	#val = ["percBundled"]
@@ -158,4 +161,5 @@ if __name__ == '__main__':
 			for buu in bun:
 				for vaa in val:
 					if not buu and vaa == "percBundled": continue
-					plot_ameth_over_alpha(df,ins=inn,wait=waa,bun=buu,yval=vaa)
+					for sca in scale:
+						plot_ameth_over_alpha(df,ins=inn,wait=waa,bun=buu,scale=sca,yval=vaa)

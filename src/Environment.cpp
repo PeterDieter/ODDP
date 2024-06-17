@@ -112,7 +112,8 @@ void Environment::initialize(double ArrivalRateScalingFactor=1.0)
     int nextTime;
     while (currTime < data->simulationTime*timeStepSize){
         //std::cout<<data->hourlyArrivalRates[currTime/timeStepSize]*2.5<<std::endl;
-        nextTime = drawFromExponentialDistribution(data->hourlyArrivalRates[currTime/timeStepSize]*ArrivalRateScalingFactor);
+        // It is divided by the scaling factor, since lambda describes the inter-arrival times, but we want to increase the arrival rate
+        nextTime = drawFromExponentialDistribution(data->hourlyArrivalRates[currTime/timeStepSize] / ArrivalRateScalingFactor);
         currTime += nextTime;
         orderTimes.push_back(nextTime);
         clientsVector.push_back(data->rng() % data->nbClients);

@@ -35,12 +35,12 @@ arr_rmeth=( "s" ) #( "l" "s" )
 arr_bundl=( "" "b" )
 arr_alpha=( 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00 )
 arr_beta=( 1.0 ) #( 0.50 0.60 0.70 0.80 0.90 )
-arr_scale=( 1.0 )
+arr_scale=( 1.00 ) #0.90 0.95 1.0 1.05 1.10 1.15 1.20 )
 
 #============================================================
 
 # loop over all combinations
-for scale in "${arr_scale[@]}"
+for scale in "${arr_scale[@]}"; do
 	for inst in "${arr_inst[@]}"; do
 		grid_inst="false"
 		if [ $inst = "grid" ]; then
@@ -85,10 +85,10 @@ for scale in "${arr_scale[@]}"
 								fi
 								# --------------------------------------------------------
 								## specify log files
-								OUT_FILE=${LOG}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${use_bundling}_${alpha}_${beta}.res
-								ERR_FILE=${LOG}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${use_bundling}_${alpha}_${beta}.err
+								OUT_FILE=${LOG}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${use_bundling}_${alpha}_${beta}_${scale}.res
+								ERR_FILE=${LOG}/dafd_${inst}_${wait}_${ameth}_${rmeth}_${use_bundling}_${alpha}_${beta}_${scale}.err
 								
-								sbatch --output=${OUT_FILE} --error=${ERR_FILE} "$WORKDIR/dafd.sbatch" ${inst} ${wait} ${ameth} ${rmeth} ${bundl_arg} ${alpha} ${beta}
+								sbatch --output=${OUT_FILE} --error=${ERR_FILE} "$WORKDIR/dafd.sbatch" ${inst} ${wait} ${ameth} ${rmeth} ${bundl_arg} ${alpha} ${beta} ${scale}
 								echo "schedule: ${inst} ${wait} ${ameth} ${rmeth} ${bundl_arg} ${alpha} ${beta} ${scale}"
 				
 								sleep 0.5 # pause to be kind to the scheduler
