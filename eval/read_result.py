@@ -87,6 +87,10 @@ def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,scale=1.0,yval="avera
 	methods = list(df_tmp.loc[:,"r_meth"].unique())
 	alphas = sorted(list(df_tmp.loc[:,"alpha"].unique()))
 	betas = list(df_tmp.loc[:,"beta"].unique())
+	#print(methods,alphas,betas)
+	
+	df_tmp_comp = df.loc[ (df["instance"] == ins) & (df["max_wait"] == wait) & (df["scaling_factor"] == scale) & (df["a_meth"] == 'n') & (df["r_meth"] == 's') & (df["bundling"] == bun),[yval]]
+	static_val = df_tmp_comp[yval].iloc[0]
 	
 	para = []
 	y_list = []
@@ -111,6 +115,8 @@ def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,scale=1.0,yval="avera
 		if para[i][0] == 'n': continue
 		plt.plot(alphas, y_list[i], marker='x', color=line_colours[i],label=para[i])
 	
+	plt.hlines(y=static_val, xmin=alphas[0], xmax=alphas[-1], colors='aqua', linestyles='--', lw=2, label='static_assignment')
+	
 	# add legend, grid and make the figure smaller
 	plt.legend(loc='best',fontsize="small")
 	plt.grid(alpha=0.5, linestyle='-', linewidth=0.5,color='#cccccc')
@@ -121,6 +127,7 @@ def plot_ameth_over_alpha (df,ins=False,wait=1500,bun=True,scale=1.0,yval="avera
 	print("saved plot to \"./eval/plots/{}/plot_{}_{}_{}_{:.2f}_{}.png\"".format(yval,ins,wait,bun,scale,yval))
 	
 	plt.close()
+	#sys.exit(-1)
 	
 	return
 
@@ -151,7 +158,7 @@ if __name__ == '__main__':
 	ins = [False,True]
 	wai = [1200,1500,1800]
 	bun = [False,True]
-	scale = [0.90,0.95,1.0,1.05,1.10,1.15,1.20]
+	scale = [0.90,0.95,1.0,1.05,1.10,1.15,1.20,1.50,1.75,2.00]
 	val = ["averageDelay","percDelayed","percBundled"]
 	#val = ["percDelayed"]
 	#val = ["percBundled"]
