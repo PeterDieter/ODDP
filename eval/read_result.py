@@ -65,10 +65,11 @@ def read_all(res_path="./results",force_read=True):
 			print("Result \".csv\" not found -> read data from \".txt\"")
 			data_labels = file.readline().strip().split(';')
 		
-		df_all = pd.DataFrame(columns=param_labels+data_labels)
+		data_sd_labels = [lab+"_sd" for lab in data_labels]
+		df_all = pd.DataFrame(columns=param_labels+data_labels+data_sd_labels)
 		for ifile in glob.glob(res_path+"/"+"*.txt",recursive=False):
-			instance, df_mean, _ = read_file_text(ifile)
-			df_all.loc[len(df_all)] = instance+df_mean.values.tolist()
+			instance, df_mean, df_sd = read_file_text(ifile)
+			df_all.loc[len(df_all)] = instance+df_mean.values.tolist()+df_sd.values.tolist()
 		
 		#df_all = df_all.sort_values(by=["instance","a_meth","r_meth"],ascending=True)
 		df_all = df_all.sort_values(by=["instance","max_wait","scaling_factor",data_labels[1]],ascending=True)
@@ -163,10 +164,13 @@ if __name__ == '__main__':
 	#val = ["percDelayed"]
 	#val = ["percBundled"]
 	
-	for inn in ins:
-		for waa in wai:
-			for buu in bun:
-				for vaa in val:
-					if not buu and vaa == "percBundled": continue
-					for sca in scale:
-						plot_ameth_over_alpha(df,ins=inn,wait=waa,bun=buu,scale=sca,yval=vaa)
+	plot = False
+	if plot == True:
+		for inn in ins:
+			for waa in wai:
+				for buu in bun:
+					for vaa in val:
+						if not buu and vaa == "percBundled": continue
+						for sca in scale:
+							plot_ameth_over_alpha(df,ins=inn,wait=waa,bun=buu,scale=sca,yval=vaa)
+	
